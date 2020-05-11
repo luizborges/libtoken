@@ -103,10 +103,10 @@ namespace cookie
 	extern char*
 	set(const char *key, const char *value,
 		const long expires_sec = 0,
-		const char *domain = getenv("SERVER_NAME"),
-		const char *path = "/",
 		const bool isSecure = false,
-		const bool isHttpOnly = false);
+		const bool isHttpOnly = false,
+		const char *domain = getenv("SERVER_NAME"),
+		const char *path = "/");
 	
 	
 	/**
@@ -127,10 +127,57 @@ namespace cookie
 	extern void
 	print(const char *key, const char *value,
 		const long expires_sec = 0,
-		const char *domain = getenv("SERVER_NAME"),
-		const char *path = "/",
 		const bool isSecure = false,
-		const bool isHttpOnly = false);
+		const bool isHttpOnly = false,
+		const char *domain = getenv("SERVER_NAME"),
+		const char *path = "/");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Includes - In - input - get and post
+////////////////////////////////////////////////////////////////////////////////
+
+
+namespace in
+{
+	/**
+	 * inicializa os métodos abaixos.
+	 * a utilização de qualquer função abaixo, sem esta inicialização gera
+	 * comportamento indefinido.
+	 */
+	extern bool init();
+	
+	/**
+	 * serve tanto para 'get' quanto 'post'.
+	 * a função init(); seta automaticamente qual é o method utilizado.
+	 */
+	extern const char* read(const char *key);
+	
+	/**
+	 * apenas para o getenv("REQUEST_METHOD") = "GET".
+	 * quando o getenv("REQUEST_METHOD") = "POST" o comportamento é indefinido.
+	 */
+	extern const char* get(const char *key);
+	
+	/**
+	 * apenas para o getenv("REQUEST_METHOD") = "POST".
+	 * quando o getenv("REQUEST_METHOD") = "GET" o comportamento é indefinido.
+	 */
+	extern const char* post(const char *key);
+	
+	/**
+	 * Inicializa a estrutura para armazenagem dos valores se:
+	 * getenv("REQUEST_METHOD") = "GET".
+	 * OBS: não é necessário chamar, pois já é chamada implicitamente pelo init();
+	 */
+	extern bool init_get();
+	
+	/**
+	 * Inicializa a estrutura para armazenagem dos valores se:
+	 * getenv("REQUEST_METHOD") = "POST".
+	 * OBS: não é necessário chamar, pois já é chamada implicitamente pelo init();
+	 */
+	extern bool init_post();
 }
 
 } // end namespace cweb

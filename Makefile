@@ -21,11 +21,11 @@ DLIB_DIR_GLOBAL   = /usr/local/lib
 ################################################
 # INCLUDE LIBRARIES OF THE LIBRARY
 ################################################
-PERCENT         = percent/percent.cpp
+PERCENT = percent/percent.cpp
 #ROUTE           = route/route_easy/route_easy.c
-#IN              = client-input/clientInput_manager/clientInput_manager.c client-input/get/get_strMap/get_strMap.c client-input/post/post_strMap/post_strMap.c
+IN      = in/manager/manager.cpp in/get/get_strMap/get.cpp in/post/post_strMap/post.cpp
 #OUT             = client-output/clientOutput_strMap/clientOutput_strMap.c
-COOKIE          = cookie/cookie_strMap/cookie_strMap.cpp
+COOKIE  = cookie/cookie_strMap/cookie.cpp
 #SESSION         = session/session_fileMap/session_fileMap.c
 ################################################
 # END
@@ -33,7 +33,7 @@ COOKIE          = cookie/cookie_strMap/cookie_strMap.cpp
 
 C_SRC_LIB       = 
 C_SRC_MAIN      = 
-C_SRC           = $(PERCENT) $(COOKIE)#$(IN) $(OUT)  $(SESSION)
+C_SRC           = $(PERCENT) $(COOKIE) $(IN) #$(OUT)  $(SESSION)
 C_OBJ_ORI       = $(C_SRC:.cpp=.o)
 C_SRC_NAME_ONLY = $(notdir $(C_SRC))
 C_OBJ_NAME_ONLY = $(C_SRC_NAME_ONLY:.cpp=.o)
