@@ -26,14 +26,14 @@ PERCENT = percent/percent.cpp
 IN      = in/manager/manager.cpp in/get/get_strMap/get.cpp in/post/post_strMap/post.cpp
 #OUT             = client-output/clientOutput_strMap/clientOutput_strMap.c
 COOKIE  = cookie/cookie_strMap/cookie.cpp
-#SESSION         = session/session_fileMap/session_fileMap.c
+SESSION = session/session_fileMap/session.cpp
 ################################################
 # END
 ################################################
 
 C_SRC_LIB       = 
 C_SRC_MAIN      = 
-C_SRC           = $(PERCENT) $(COOKIE) $(IN) #$(OUT)  $(SESSION)
+C_SRC           = $(PERCENT) $(COOKIE) $(IN) $(SESSION) #$(OUT)  
 C_OBJ_ORI       = $(C_SRC:.cpp=.o)
 C_SRC_NAME_ONLY = $(notdir $(C_SRC))
 C_OBJ_NAME_ONLY = $(C_SRC_NAME_ONLY:.cpp=.o)

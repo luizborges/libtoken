@@ -206,9 +206,6 @@ namespace session
 	
 	extern bool load();
 	
-	/**
-	 * Retorna o valor do cookie sid.
-	 */
 	extern char* save();
 }
 } // end namespace cweb
