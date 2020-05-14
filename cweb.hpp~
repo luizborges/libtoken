@@ -43,6 +43,7 @@ using namespace std;
 // Includes - my libraries
 ////////////////////////////////////////////////////////////////////////////////
 #include <util.hpp>
+#include <headers/stackTracer.h>
 ////////////////////////////////////////////////////////////////////////////////
 // Includes - namespace
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,9 +207,107 @@ namespace session
 	
 	extern bool load();
 	
-	extern char* save();
+	/**
+	 * Retorna o valor do cookie sid.
+	 * Sempre gera um novo sid.
+	 * Uma vez que está função roda, a função 'save()' já conhece o sid.
+	 */
+	extern char* sid();
+	
+	/**
+	 * Retorna o valor do cookie sid.
+	 * uma vez que a função 'sid()' foi chamada, esta função já reconhece o sid().
+	 * caso não seja chamada, e se deseja salvar a sessão, deve-se chamar a função como
+	 * o parâmetro como true: cweb::session::save(true)
+	 */
+	extern char* save(const bool toSave = false);
+	
+	/**
+	 * Retorna true em caso de inserção e falso em caso contrário.
+	 */
+	extern bool set(
+		const char *key = NULL,
+		const void *value = NULL,
+		const int size = 0,
+		const int numElem = 1);
+
+	template <typename T>
+	inline bool set(
+		const char *key,
+		T value);
+	
+	extern inline bool
+	set(const char *key, const char *value);
+
+	extern inline bool
+	set(const char *key, const string& value);
+
+	extern void* getv( // get vector
+		const char *key = NULL,
+		int *numElem = NULL,
+		int *size = NULL);
+	
+	template <typename T>
+	inline T get(const char *key);
+	
+	inline char* get(const char *key = NULL);
+	
+	extern void* delv( // del vector
+		const char *key = NULL,
+		int *numElem = NULL,
+		int *size = NULL);
+	
+	template <typename T>
+	inline T del(const char *key);
+	
+	inline char* del(const char *key = NULL);
+	
+	extern void 
 }
 } // end namespace cweb
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Implementation of templates and inline functions
+////////////////////////////////////////////////////////////////////////////////
+template <typename T>
+inline bool cweb::session::set(
+		const char *key,
+		T value)
+{
+	T *ptr = new T;
+	*ptr = value;
+	return cweb::session::set(key, ptr, sizeof(T), 1);
+}
+
+inline bool
+cweb::session::set(const char *key, const char *value)
+{
+	return cweb::session::set(key, value,
+		sizeof(char), strlen(value)+1);
+}
+
+inline bool
+cweb::session::set(const char *key, const string& value)
+{
+	return cweb::session::set(key, value.c_str(),
+		sizeof(char), strlen(value.c_str())+1);
+}
+
+template <typename T>
+inline T cweb::session::get(const char *key)
+{
+	T* ptr = static_cast<T*>(cweb::session::getv(key));
+	return *ptr;
+}
+
+inline char*
+cweb::session::get(const char *key)
+{
+	return static_cast<char*>(
+		cweb::session::getv(key));
+}
+
 #endif // CWEBPP_H
 
 ////////////////////////////////////////////////////////////////////////////////
