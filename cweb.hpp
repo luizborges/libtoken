@@ -132,6 +132,20 @@ namespace cookie
 		const bool isHttpOnly = false,
 		const char *domain = getenv("SERVER_NAME"),
 		const char *path = "/");
+	
+	/**
+	 * delete a cookie
+	 * funciona como a função:
+	 * cweb::cookie::set(key, "", -1);
+	 */
+	inline char* del(const char *key);
+		
+	/**
+	 * print delete a cookie
+	 * funciona como a função:
+	 * cweb::cookie::print(key, "", -1);
+	 */
+	inline void pdel(const char *key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -262,7 +276,11 @@ namespace session
 	
 	inline char* del(const char *key = NULL);
 	
-	extern void 
+	/**
+	 * remove todas as chaves e seus valores da sessão.
+	 * @return retorna o número de chaves excluídas.
+	 */
+	extern int clean(); 
 }
 } // end namespace cweb
 
@@ -270,6 +288,18 @@ namespace session
 ////////////////////////////////////////////////////////////////////////////////
 // Implementation of templates and inline functions
 ////////////////////////////////////////////////////////////////////////////////
+inline char*
+cweb::cookie::del(const char *key)
+{
+	return cweb::cookie::set(key, "", -1);
+}
+
+inline void
+cweb::cookie::pdel(const char *key)
+{
+	return cweb::cookie::print(key, "", -1);
+}
+
 template <typename T>
 inline bool cweb::session::set(
 		const char *key,
@@ -298,6 +328,9 @@ template <typename T>
 inline T cweb::session::get(const char *key)
 {
 	T* ptr = static_cast<T*>(cweb::session::getv(key));
+	if(ptr == NULL) {
+		return static_cast<T>(NULL);
+	}
 	return *ptr;
 }
 
@@ -308,6 +341,22 @@ cweb::session::get(const char *key)
 		cweb::session::getv(key));
 }
 
+template <typename T>
+inline T cweb::session::del(const char *key)
+{
+	T* ptr = static_cast<T*>(cweb::session::delv(key));
+	if(ptr == NULL) {
+		return static_cast<T>(NULL);
+	}
+	return *ptr;
+}
+
+inline char*
+cweb::session::del(const char *key)
+{
+	return static_cast<char*>(
+		cweb::session::delv(key));
+}
 #endif // CWEBPP_H
 
 ////////////////////////////////////////////////////////////////////////////////

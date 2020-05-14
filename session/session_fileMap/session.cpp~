@@ -257,6 +257,47 @@ class Session
 		
 		return it->second->value;
 	}
+	
+	void* del(
+		const char *key = NULL,
+		int *numElem = NULL,
+		int *size = NULL)
+	{
+		if(key == NULL)
+		{
+			log_print_no_key_map(key);
+			return NULL;
+		} 
+		
+		auto it = _map.find(key);
+		if (it == _map.end()) // key not found
+		{
+			log_print_no_key_map(key);
+			return NULL;
+		}
+		
+		if(numElem != NULL) {
+			*numElem = it->second->numElem;
+		}
+		if(size != NULL) {
+			*size = it->second->size;
+		}
+		
+		const char *_key = it->first;
+		Content* c = it->second;
+		void *value = it->second->value;
+		_map.erase(it);
+		delete[] _key; // libera a memória
+		delete   c;
+		return value;
+	}
+	
+	int clean()
+	{
+		int numKeys = _map.size();
+		_map.clear();
+		return numKeys;
+	}
  private:
  
 	void setDir(const char *dirFileSession)
@@ -761,9 +802,20 @@ cweb::session::getv(
 	return _session.get(key, numElem, size);
 }
 
+void*
+cweb::session::delv(
+	const char *key,
+	int *numElem,
+	int *size)
+{
+	return _session.del(key, numElem, size);
+}
 
-
-
+int
+cweb::session::clean()
+{
+	return _session.clean();
+}
 
 
 
