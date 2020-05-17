@@ -572,6 +572,11 @@ class Session
 			}
 			
 			char *key = new char[len];
+			if(key == NULL) {
+				Error("CWEB::SESSION - In allocation memory for session content key.\n"
+				"Key size is %d bytes\nSession File is \"%s\"\nFile pointer is %p\n"
+				"erro is %d\nstr erro is \"%s\"", len, fname, f, errno, strerror(errno));
+			}
    			if(fread(key, sizeof(char), len, f) != static_cast<size_t>(len)) {
 				Error("CWEB::SESSION - Reading map key.\nid of key is %d\n"
 				"Length of key is %dSession File is \"%s\"\nFile pointer is %p\n"
@@ -737,7 +742,7 @@ class Session
 	{
 		Warn("CWEB::SESSION - Fetch for a no key of Session.\n"
 		"fectch key = \"%s\"\nnumber of keys is %d\n"
-		"List of all keys in HTTP REQUEST METHOD POST that be parsed:", key, _map.size());
+		"List of all keys in Session that be parsed:", key, _map.size());
 		
 		for(auto elem : _map)
 		{

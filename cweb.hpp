@@ -28,7 +28,7 @@
 #include <iostream>
 #include <cstring>
 #include <map> 
-
+#include <deque>
 
 using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,6 +281,77 @@ namespace session
 	 * @return retorna o número de chaves excluídas.
 	 */
 	extern int clean(); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Includes - Out - output
+////////////////////////////////////////////////////////////////////////////////
+namespace out
+{
+	////////////////////////////////////////////////////////////////////////////////
+	// how to use
+	////////////////////////////////////////////////////////////////////////////////
+	/*
+ 	 * @descripion: como funciona o parser para encontrar a tag <?cweb CONTENT ?>
+	 * '<?cweb #in "name" ?>' -> inclui o objeto chamado name, que foi colocado nas funções:
+	 * void str(const char *name, const char *output);
+	 * void file(const char *name, FILE *output);
+	 * void file(const char *name, const char *file_name);
+	 * onde "name" da tag é o parâmetro 'name'.
+	 * '<?cweb #add "file_name" ?>' -> inclui o conteúdo do arquivo, cujo nome é "file_name"
+	 * A diferença é que esta tag não necessita de ser inserida por meio das funções de inserção de saída.
+	 * A tag será então substituída pelo conteúdo do objeto name, pode ser um arquivo ou uma string.
+	 * Após a inserão, continuará a impressão do objeto de onde parou.
+	 * '<?cweb@' -> imprime normalemnte o valor '<?cweb' -> ou seja, o caracter '@' será omitido,  
+	 * porém isto somente ocorre com o primeiro caracter posterior.
+	 * - deve-se utilizar tal artifício ('<?cweb@') nos comentários, pois o * parser não distingue se a linha está em um comentário ou não.
+	 * @ TODO - criar uma nova versão que verifica se a linha está dentro de um comentário ou não *
+	 * all character of name must be a letter (A to Z or a to z) or a digit (0 to 9) or special character ('_' and '-')
+	 * O nome da tag inserida nas funções -> 'name', não pode ser "___tag_add___XXX"
+	 * OBS1: "void file(const char *name, FILE *output);"
+	 * A função NÃO chama a função rewind(FILE *output) explicitamente, nem está
+	 * função nem a função "void print()"
+	 * ou seja será impresso o arquivo, a partir da posição informada pelo poteiro
+	 * FILE *output, no momeno em que a função "void print()" for chamada.
+	 * OBS2: o conteúdo da variável "const char *name" é copiado para dentro da classe
+	 * assim o usuário é livre para reutilizar a memória, sem se preocupar com resultado
+	 * indefinido pela biblioteca.
+	 * OBS3: o conteúdo das variáveis "const char *output" da função "void str(const char *name, const char *output)" e a variável "const char *file_name" da função "void file(const char *name, const char *file_name);" são copiados para dentro da biblioteca, para o usuário
+	 * ser livre para reutilizar e manusear a memória como bem lhe parecer.
+	 * para liberar essas memórias utilize a função "void clean()"
+ */
+
+	extern void str(const char *name, const char *output);
+	
+	extern void file(const char *name, FILE *output);
+	
+	extern void file(const char *name, const char *file_name);
+	
+	/**
+	 * Envia o arquivo gerado na saída para a saída padrão do fast-cgi.
+	 * NÃO É RECURSIVO - Se um arquivo já foi impresso, ele NÃO será novamente impresso.
+	 * Isto é feito para evitar entradas em loops infinitos
+	 */
+	extern void print();
+	
+	/**
+	 * se utilizado imediatamente antes da função print, o comportamento é indefinido.
+	 * como a função copia 
+	 */
+	extern void clean();
+	
+	namespace error
+	{
+		extern void str(const char *name, const char *output);
+	
+		extern void file(const char *name, FILE *output);
+	
+		extern void file(const char *name, const char *file_name);
+		
+		extern void print();
+		
+		extern void clean();
+	}
 }
 } // end namespace cweb
 

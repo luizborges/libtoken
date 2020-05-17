@@ -3,764 +3,562 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Includes
 ////////////////////////////////////////////////////////////////////////////////
-//#include "clientOutput_strMap.h"
-#include "../../cweb.h"
+#include "../../cweb.hpp"
+
+
+#define TRACE_FUNC \
+fprintf(stderr, "\n*****************************************\n");\
+fprintf(stderr, "TRACE FUNC:: \"%s\" (%d, \"%s\")\n",\
+__PRETTY_FUNCTION__, __LINE__, __FILE__);\
+fprintf(stderr, "*****************************************\n");
+
+////////////////////////////////////////////////////////////////////////////////
+// função para criação de dependência circular
+////////////////////////////////////////////////////////////////////////////////
+void call_child(const char *name);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Private Structs
 ////////////////////////////////////////////////////////////////////////////////
-
-// para tratamento interno da variável type
-enum Out_Type_t {
-	string,
-	file,
-	file_name
-};
-
-// para tratamento interno da variável opt
-enum Out_Opt_t {
-	Root, // NÃO pode ser error - não é chamado pela tag <?cweb #include "NAME" ?>
-	Leaf, // NÃO pode ser error - só é chamado pela tag <?cweb #include "NAME" ?>
-	Error_Root, // só pode ser error - não é chamado pela tag <?cweb #include "NAME" ?>
-	Error_Leaf // só pode ser error - só é chamado pela tag <?cweb #include "NAME" ?>
-};
-
-
-union Out_Var_o {
-	FILE *file;
-	char *file_name;
-	char *str;
-};
-
-
-typedef struct {
-	union Out_Var_o var;
-	enum  Out_Type_t type;
-	enum  Out_Opt_t opt;
-
-	bool  hasPrinted;
-	char  name[CWEB_CLIENTOUTPUT_STRMAP_NAME_MAX]; // key do map para esta saída
-} Out_o;
-
-typedef Out_o* Out_t;
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Private Variables
-////////////////////////////////////////////////////////////////////////////////
-
-								
-////////////////////////////////////////////////////////////////////////////////
-// Private Functions Head
-////////////////////////////////////////////////////////////////////////////////
-static Out_t
-_Get_Root_COutput_To_Print (const bool isError);
-
-
-static void
-_Parser(Out_t cout);
-
-static char*
-_Parser_Tag(Out_t cout, char *tag);
-										
-////////////////////////////////////////////////////////////////////////////////
-// Private Functions Inline
-////////////////////////////////////////////////////////////////////////////////
-static inline char*
-_Get_New_Name_Tag_ADD()
+struct Content // use this to keep the array/variale that will be write in session file
 {
-	static int num = 0;
+	char *name = NULL;
+	bool hasPrint = false;
+	bool hasValue = false; // to control delete[] value
+	char *data = NULL;
+	char *tag = NULL;
 	
-	char prefix[14] = "___tag_add___";
-	
-	char *name = MM_Malloc((strlen(prefix) + sizeof(int) +1)*sizeof(char));
-	if(name == NULL) {
-		Error("Allocating space for new name of tag add\n"
-		"erro is %d\nstr erro is \"%s\"", errno, strerror(errno));
+	////////////////////////////////////////////////////////////////////////////////
+	// functions
+	////////////////////////////////////////////////////////////////////////////////
+	Content(const char *name)
+	{TRACE_FUNC
+		init(name);
 	}
 	
-	sprintf(name, "%s%d", prefix, num);
-	++num; // update num for the next name
+	Content(const char *name,
+			const char *data)
+	{TRACE_FUNC
+		init(name);
+		
+		if(data == NULL) {
+			Error("WEB::OUT - Data of output is NULL\nContent name is \"%s\"", name);
+		}
+		
+		int len = strlen(data);
+		this->data = new char[len +1];
+		if(this->data == NULL) {
+			Error("CWEB::OUT - In allocation memory for output value.\n"
+			"Name of content is \"%s\"\ncontent size is %d bytes\nContent data is \"%s\"\n"
+			"erro is %d\nstr erro is \"%s\"", name, len, data, errno, strerror(errno));
+		}
+		strcpy(this->data, data);
+	}
 	
-	return name;
-}
-
-
-static inline bool
-_Has_Only_Alpha_Num(const char *str)
-{
-	for(int i=0; i < strlen(str); ++i) {
-		if(isalnum(str[i]) == false &&
-			str[i] != '_' &&
-			str[i] != '-')
+	virtual ~Content()
+	{
+		delete[] name;
+		delete[] data;
+	}
+	void print()
+	{TRACE_FUNC
+		// para evitar chamadas recursivas e loops infinitos.
+		// garante que cada conteúdo somente será impresso uma única vez
+_TL		if(hasPrint == true) return;
+_TL		hasPrint = true;
+_TL		
+_TL		init_data(); // unifica o tratamento
+_TL		
+_TL		while(strlen(data) > 0)
 		{
-				 return false;
+			/////////////////////////////////////////////////////////////////
+			// e realiza a busca pela tag
+			/////////////////////////////////////////////////////////////////
+_TL			tag = strstr(data, "<?cweb"); // realiza a busca pela tag
+_TL			if(tag == NULL) { // termina o loop pois não há tag
+_TL				fprintf(stdout, "%s", data); // imprime a string
+_TL				break;
+_TL			}
+_TL			
+			/////////////////////////////////////////////////////////////////
+			// verifica se não é comentário e se não for, chama o parser da tag
+			/////////////////////////////////////////////////////////////////
+_TL			if(tag[6] == '@') // verifica se é o character de escape
+			{	// o character de escape é sempre omitido
+_TL				tag[6] = '\0'; // finaliza a string que será impressa
+_TL				data = &tag[7];// atualiza o ponteiro, para continuar a verificação da string
+_TL				fprintf(stdout, "%s", data);
+_TL			} else {
+				/**
+				 * Está função realiza as operações:
+				 * 1. imprime 'data' até o começo da tag "<?cweb" - esta não impressa
+				 * 2. verifica se a tag chamada está correta e dentro do padrão
+				 * 3. chama a tag filho e imprime ela (realiza todo o parser dela.
+				 * 4. atualiza o ponteiro 'data', para o final da tag "?>"
+				 */
+				
+_TL				print_tag();
+			}
 		}
 	}
 	
-	return true;
-}
-
-
-/**
- * Map com todos os "arquivos" que foram inseridos pelo usuário.
- * Guarda as saídas que serão enviadas para o cliente.
- * a chave do map, é a variável 'name'
- */
-static inline map_t
-_Get_LeafMap () 
-{
-	static map_t map = NULL;
+	virtual void init_data(){}
 	
-	if(map == NULL) { // inicializa o map, se isto ainda não ocorreu
-		map = Abstract_Factory_Common(Map);
-		if(map == NULL) {
-			Error("creating map");
-		}
-	}
-	
-	return map;
-}
-
-/**
- * Map com todos os "arquivos" que foram inseridos pelo usuário.
- * Guarda as saídas que serão enviadas para o cliente.
- * a chave do map, é a variável 'name'
- */
-static inline map_t
-_Get_LeafMap_Error () 
-{
-	static map_t mapError = NULL;
-	
-	if(mapError == NULL) { // inicializa o map, se isto ainda não ocorreu
-		mapError = Abstract_Factory_Common(Map);
-		if(mapError == NULL) {
-			Error("creating map error");
-		}
-	}
-	
-	return mapError;
-}
-
-
-
-static inline void
-_Check(const char *name, const void *output,
-				    const char *type, const char *opt)
-{
-	// check name 
-	if(name == NULL) { Error("name is NULL"); }
-	
-	if(strlen(name) < CWEB_CLIENTOUTPUT_STRMAP_NAME_MIN) { 
-		Error("name length is lesser than %d.\nname length: %d", CWEB_CLIENTOUTPUT_STRMAP_NAME_MIN, strlen(name));
-	}
-	
-	if(strlen(name) >= CWEB_CLIENTOUTPUT_STRMAP_NAME_MAX) {
-		Error("name length is greater than %d.\nname lenght: %d.",
-			CWEB_CLIENTOUTPUT_STRMAP_NAME_MAX -1, strlen(name));
-	}
-	
-	if(_Has_Only_Alpha_Num(name) == false) {
-		Error("not a valid name.\nall character of name must be a letter (A to Z or a to z) or a digit (0 to 9) or special character ('_' and '-').\nname: \"%s\"", name);
-	}
-	
-	// verifica se já existe um nome igual no map
-	map_t map = _Get_LeafMap();
-	if(map->HasKey(map->self, name) == true) { Error("name already exists in ClientOutput Set.\n Name already inserted before.\nName: \"%s\"", name);}
-
-	if(output == NULL) { Error("output is NULL"); } // check 
-
-	if(strcmp(type, "file") != 0      &&
-	   strcmp(type, "file_name") != 0 &&
-	   strcmp(type, "string") != 0)
-	{
-		Error("type is not a valid type.type is \"%s\"", type);   
-	}
-	
-	// check the name of the file
-	if(strcmp(type, "file_name") == 0) {
-		char *fn = (char*)output;
-		
-		if(strlen(fn) == 0) {
-			Error("file name is a empty string.\nValid values for type is: \"string\" or \"file\" or \"file_name\".\nfor more details see documentation.", opt);
-		}
-	}
-
-	if( strcmp(opt, "root") != 0 &&
-		strcmp(opt, "leaf") != 0 &&
-		strcmp(opt, "error_root") != 0 &&
-		strcmp(opt, "error_leaf") != 0)
-	{
-		Error("opt is not a valid option.opt is \"%s\".\nValid values for opt is: \"root\" or \"leaf\" or \"error_root\" or \"error_leaf\".\nfor more details see documentation.", opt);   
-	}
-}
-
-
-/**
- * Lista que contém todos os nós que são root - que podem ser roots
- */
-static inline arrayList_t
-_Get_RootList ()
-{
-	static arrayList_t rootList = NULL;
-	
-	if(rootList == NULL) { // inicializa o array, se isto ainda não ocorreu
-		rootList = Abstract_Factory_Common(ArrayList);
-		if(rootList == NULL) {
-			Error("Creating Root List");
-		}
-	}
-	
-	return rootList;
-}
-
-/**
- * Lista que contém todos os nós que são root - que podem ser roots
- */
-static inline arrayList_t
-_Get_RootList_Error ()
-{
-	static arrayList_t rootListError = NULL;
-	
-	if(rootListError == NULL) { // inicializa o array, se isto ainda não ocorreu
-		rootListError = Abstract_Factory_Common(ArrayList);
-		if(rootListError == NULL) {
-			Error("Creating Root List");
-		}
-	}
-	
-	return rootListError;
-}
-
-/**
- * Fila que contém as strings que serão impressas
- * Queue strcut.
- * First in - First out
- * Embora a base seja um array, o modus operandi é de fila
- */
-static inline arrayList_t
-_Get_PrintQueue ()
-{
-	static arrayList_t printQueue = NULL;
-	
-	if(printQueue == NULL) { // inicializa o array, se isto ainda não ocorreu
-		printQueue = Abstract_Factory_Common(ArrayList);
-		if(printQueue == NULL) {
-			Error("Creating Print List");
-		}
-	}
-	
-	return printQueue;
-}
-
-static inline void
-_Parser_Inside_Tag_Check_Name(const Out_t cout,
-										   const char *name)
-{
-	if(strlen(name) >= CWEB_CLIENTOUTPUT_STRMAP_NAME_MAX) { // verifica se o nome é maior que o limite permitido
-		Error("not a valid name.\nname is too long, it must to be equal or lesser than %d characters.\nin tag <?cweb #include \"\ngiven name: \"%s\"\n"
-			"max length to name: %d.\nClient Output Name: \"%s\".",
-			CWEB_CLIENTOUTPUT_STRMAP_NAME_MAX, name, CWEB_CLIENTOUTPUT_STRMAP_NAME_MAX, cout->name);
-	}
-	
-	if(strlen(name) < CWEB_CLIENTOUTPUT_STRMAP_NAME_MIN) { // verifica se o nome é menor que o limite permitido
-		Error("not a valid name.\nname is too short, it must to be equal or greater than %d characters.\nin tag <?cweb #include \"\ngiven name: \"%s\"\n"
-			"min length to name: %d.\nClient Output Name: \"%s\".\nLine Number where is problem: %d.",
-			CWEB_CLIENTOUTPUT_STRMAP_NAME_MAX, name, CWEB_CLIENTOUTPUT_STRMAP_NAME_MAX, cout->name);
-	}
-	
-	if(_Has_Only_Alpha_Num(name) == false) { // verifica se é apenas dígito ou alfa
-		Error("not a valid name.\nall character of name must be a letter (A to Z or a to z) or a digit (0 to 9) or special character ('_' and '-').\nin tag <?cweb #include \"\ngiven name: \"%s\"\nClient Output Name: \"%s\".", name, cout->name);
-	}
-}
-
-static inline void
-_Parser_Inside_Tag_Run_COutChild(Out_t cout,
-											   const char *childName)
-{
-	map_t map = NULL;
-	if(cout->opt == Error_Root ||
-	   cout->opt == Error_Leaf)
-	{
-		map = _Get_LeafMap_Error();
-	}
-	else
-	{
-		map = _Get_LeafMap();
-	}
-	
-	if(map == NULL) {
-		Error("map is NULL. map = %p", map);
-	}
-	char *optStr[] = { "root", "leaf", "error_root", "error_leaf" };
-	char *opt; // utilizado para imprimir a opção em caso de erro
-	if(map->HasKey(map->self, childName) == true) {
-		Out_t child = map->Del(map->self, childName);
-		if(child == NULL) { // verifica se ocorreu algum erro
-			Error("leaf is NULL.\nname = \"%s\".\nClient Output Name: \"%s\".",
-				childName, cout->name);
-		}
-		if(child->opt != Leaf &&
-		   child->opt != Error_Leaf) {
-		   	opt = child->opt == Root ? optStr[0] : optStr[2];
-			Error("child is not leaf option.\noption: %s\nname = \"%s\".\nClient Output Name: \"%s\"",
-				opt, childName, cout->name);
-		}
-		if(child->opt == Leaf &&
-		   cout->opt != Root &&
-		   cout->opt != Leaf) {
-		    opt = cout->opt == Error_Root ? optStr[2] : optStr[3];
-			Error("child is Leaf but its parent not.\nParent opt is %s", opt);
-		}
-		if(child->opt == Error_Leaf &&
-		   cout->opt != Error_Root &&
-		   cout->opt != Error_Leaf) {
-		    opt = cout->opt == Root ? optStr[0] : optStr[1];
-		    Error("child is Error_Leaf but its parent not.\nParent opt is %s", cout->opt);
-		}
-		if(child->hasPrinted == true) {
-			Error("leaf already printed.\nname = \"%s\".\nClient Output Name: \"%s\".",
-				childName, cout->name);
-		}
-		
-		_Parser(child); // inicia a recursão - para o pai e chama o filho
-	}
-	else // não tem o name no leaf map
-	{
-		int numKeys = -1;
-		if(cout->opt == Root || cout->opt == Leaf) { opt = optStr[1]; }
-		else { opt = optStr[3]; } // utiliza para imprimir o nome do map que deveria estar child
-		char **key = map->Key(map->self, &numKeys);
-		fprintf(stderr, "*********\nAll keys in %sleaf map\n**********\nnumber of keys: %d\n",
-				opt, numKeys);
-		for(int i=0; i < numKeys; ++i) { // imprime todas as chaves do leaf key
-			fprintf(stderr,"key[%d]: \"%s\"\n", i, key[i]);
-		}
-		Error("No name as key in %s map.\nName could be not set or be already printed.\n"
-			"name = \"%s\".\nClient Output Name: \"%s\".", opt, childName, cout->name);
-	}
-}
-
-static inline void
-_Parser_Main_Loop(Out_t cout,
-								char *cout_data_)
-{
-	char *cout_data = cout_data_; // guarda essa posição para fins de debug
-	while(strlen(cout_data) > 0)
-	{
-		/////////////////////////////////////////////////////////////////
-		// guarda a string que será impressa e realiza a busca pela tag
-		/////////////////////////////////////////////////////////////////			
-		arrayList_t printQueue = _Get_PrintQueue ();
-		printQueue->Add(printQueue->self, printQueue->Len(printQueue->self), cout_data); // guarda a string que será impressa
-		char *tag = strstr(cout_data, "<?cweb"); // realiza a busca pela tag
-		if(tag == NULL) { // termina o loop pois não há tag
-			break;
-		}
+	void print_tag()
+	{TRACE_FUNC
 		
 		/////////////////////////////////////////////////////////////////
-		// verifica se não é comentário e se não for, chama o parser da tag
+		// check the header of tag "<?cweb #in "" or <?cweb #add "
 		/////////////////////////////////////////////////////////////////
-		if(tag[6] == '@') // verifica se é o character de escape
-		{	// o character de escape é sempre omitido
-			tag[6] = '\0'; // finaliza a string que será impressa
-			cout_data = &tag[7]; // atualiza o ponteiro, para continuar a verificação da string
-		} else {
-			cout_data = _Parser_Tag(cout, tag);
-		}
-	}
-}
-
-static inline void
-_StrMap_Print()
-{
-	arrayList_t printQueue = _Get_PrintQueue();
-	if(printQueue->Len(printQueue->self) < 0) {
-		Error("NO Client Output to print.");
-	}
-	
-	// imprime todas as strings armazenadas na fila de impressão.
-	while(printQueue->Len(printQueue->self) > 0)
-	{
-		char *str = printQueue->Del(printQueue->self, 0);
-		printf("%s", str);
-	}
-}
-
-static inline void
-_Check_Print_All_ClientOutput(const bool isError)
-{
-	map_t map = NULL;
-	if(isError == true) {
-		map = _Get_LeafMap_Error();
-	}
-	else
-	{
-		map = _Get_LeafMap();
-	}
-	
-	int numKey;
-	char **cout = map->Key(map->self, &numKey);
-	
-	if(numKey > 0) // check if any printable cout is not printed
-	{	// se tem algum cout não impresso - exibe eles e lança um erro
-		fprintf(stderr, "***********************************\n"
-			"not all Client Output was printed.\nClient output name not printed listed below:\n");
-		
-		for(int i=0; i < numKey; ++i)
+_TL		if(strncmp(tag, "<?cweb #in \"", 12) != 0 &&
+			strncmp(tag, "<?cweb #add \"", 13) != 0)
 		{
-			fprintf(stderr, "[%d]::Client Output Name::\"%s\"\n", i+1, cout[i]);
-			map->Del(map->self, cout[i]);
-		}
+_TL			char *endLine = strchr(tag, '\n'); // descobre o fim da linha onde ocorreu o erro
+_TL			if(endLine != NULL) {
+_TL				endLine[0] = '\0'; // posiciona um novo fim na string para impressão do erro.
+_TL			}
 		
-		Error("\n");
-	}
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Private Functions
-////////////////////////////////////////////////////////////////////////////////
-static char*
-_Parser_Tag(Out_t cout,
-			char *tag)
-{
-	/////////////////////////////////////////////////////////////////
-	// check the header of tag "<?cweb #in "" or <?cweb #add "
-	/////////////////////////////////////////////////////////////////
-	if(strncmp(tag, "<?cweb #in \"", 12) != 0 &&
-		strncmp(tag, "<?cweb #add \"", 13) != 0)
-	{
-		char *endLine = strchr(tag, '\n'); // descobre o fim da linha onde ocorreu o erro
-		if(endLine != NULL) {
-			endLine[0] = '\0'; // posiciona um novo fim na string para impressão do erro.
-		}
-		
-		Error("tag <?cweb is incorrect.\nTag found (until the end of line): \"%s\"\n"
-			"Expected one of these sequences: \"<?cweb #include \"\" (with \' \') or"
+_TL			Error("WEB::OUT - Tag <?cweb is incorrect.\n"
+			"Tag found (until the end of line): \"%s\"\n"
+			"Expected one of these sequences: \"<?cweb #in \"\" (with \' \') or"
 			" \"<?cweb\n#add \"\" (with \' \') \nfor more details see documentation.\n"
-			"Client Output Name: \"%s\"", tag, cout->name);
-	}
-	
-	bool isTagADD = false;
-	if(strncmp(tag, "<?cweb #add \"", 12) == 0) {
-		isTagADD = true;
-	}
-	/////////////////////////////////////////////////////////////////
-	// get the name in the include
-	/////////////////////////////////////////////////////////////////
-	char *name = strchr(tag, '\"'); // sempre terá o character '"' - devido a verificação anterior
-	name = &name[1]; // atualiza o nome para a próxima possição do arranjo - sempre haverá tal posição - garantida pelo character '\0'
-	char *nameEnd = strchr(name, '\"'); // descobre o fim de name
-	if(nameEnd == NULL) {
-		char *endLine = strchr(name, '\n'); // descobre o fim da linha onde ocorreu o erro
-		if(endLine != NULL) {
-			endLine[0] = '\0'; // posiciona um novo fim na string para impressão do erro.
+			"Client Output Name: \"%s\"\nType of output is %s", tag, name, type());
 		}
-		Error("tag <?cweb is incorrect.\nNAME has always be terminated with character \'\"\'.\nNAME given is = \"%s\".\ntag struct is \"<?cweb #include \"NAME\" ?>\" or \"<?cweb #add \"NAME\" ?>\".\nfor more details see documentation.\nClient Output Name: \"%s\"", name, cout->name);
-	}
-	nameEnd[0] = '\0'; // seta o fim de name, onde era o character '"'
 	
-	
-	if(isTagADD == true) // run tag <?cweb #add
-	{
-		// trata se for a tag <cweb #add \"
-		/**
-		 * para fins de deixar o código mais simples e harmonico.
-		 * Ele le o nome do arquivo e adiciona o mesmo como sendo uma tag #in
-		 * Em seguida manda executar a tag.
-		*/
-		char *tagAddName = _Get_New_Name_Tag_ADD();
-		CWeb_Out_Set(tagAddName, name, "file_name", "leaf");
-		_Parser_Inside_Tag_Check_Name(cout, tagAddName);
-		_Parser_Inside_Tag_Run_COutChild(cout, tagAddName); // run cout child leaf - new cout
-		MM_Free(tagAddName); // free memory
-	} else { // run tag <?cweb #in
-		_Parser_Inside_Tag_Check_Name(cout, name);
-		_Parser_Inside_Tag_Run_COutChild(cout, name); // run cout child leaf - new cout run
-	}
-	
-	
-	/////////////////////////////////////////////////////////////////
-	// get the new cout that name is called
-	/////////////////////////////////////////////////////////////////
-	
-	
-	/////////////////////////////////////////////////////////////////
-	// treat the end of tag after NAME
-	/////////////////////////////////////////////////////////////////
-	char *tagEnd = nameEnd; // descobre o começo depois do fim do nome
-	tagEnd = &tagEnd[1]; // seta o primeiro character depois de '"' - após o fim do nome
-	
-	if( strncmp(tagEnd, " ?>",    3) != 0)
-	{
-		char *endLine = strchr(tagEnd, '\n'); // descobre o fim da linha onde ocorreu o erro
-		if(endLine != NULL) {
-			endLine[0] = '\0'; // posiciona um novo fim na string para impressão do erro.
+_TL		bool isTagADD = false;
+_TL		if(strncmp(tag, "<?cweb #add \"", 12) == 0) {
+_TL			isTagADD = true;
 		}
+		/////////////////////////////////////////////////////////////////
+		// imprime a string até o ponto do começo da tag.
+		/////////////////////////////////////////////////////////////////
+_TL		tag[0] = '\0'; // finaliza a string passada
+		// sempre existe essa posição, pois o nome da tag já foi conferido acima
+_TL		tag = &tag[1]; // atualiza a posição da tag, para a dentro da tag.
+_TL		fprintf(stdout, "%s", data); // imprime até tag[0]
 		
-		Error("tag <?cweb is incorrect.\nEnd of Tag found (until the end of line): \"%s\"\n"
-			"Expected one of these sequences: \" ?>\" (with \' \')\nfor more details see"
-			" documentation.\nClient Output Name: \"%s\"", tagEnd, cout->name);
-	}
+		/////////////////////////////////////////////////////////////////
+		// get the name in the include
+		/////////////////////////////////////////////////////////////////
+		// sempre terá o character '"' - devido a verificação anterior
+_TL		char *tagName = strchr(tag, '\"');
+		// atualiza o nome para a próxima possição do arranjo - 
+		// sempre haverá tal posição - garantida pelo character '\0'
+_TL		tagName = &tagName[1]; 
+_TL		char *nameEnd = strchr(tagName, '\"'); // descobre o fim de name
+_TL		if(nameEnd == NULL) { // trata o caso de ter ocorrido um erro
+			// descobre o fim da linha onde ocorreu o erro
+_TL			char *endLine = strchr(tagName, '\n');
+_TL			if(endLine != NULL) {
+_TL				endLine[0] = '\0'; // posiciona um novo fim na string para impressão do erro.
+			}
+_TL			Error("WEB::OUT - Tag <?cweb is incorrect.\n"
+			"NAME has always be terminated with character \'\"\'.\nNAME given is = \"%s\".\n"
+			"tag struct is \"<?cweb #in \"NAME\" ?>\" or \"<?cweb #add \"NAME\" ?>\".\n"
+			"for more details see documentation.\nClient Output Name: \"%s\"\n"
+			"Type of output is %s", tagName, name, type());
+_TL		}
+_TL		nameEnd[0] = '\0'; // seta o fim de name, onde era o character '"'
 	
-	/////////////////////////////////////////////////////////////////
-	// treat the end of tag after NAME
-	/////////////////////////////////////////////////////////////////
-	tag[0] = '\0'; // finaliza a string passada
-	char *new_cout_data = strchr(tagEnd, '>');
-	new_cout_data = &new_cout_data[1]; // passa para o próximo character
 	
-	return new_cout_data;
-}
-
-
-
-/**
- * Retorna os nós (roots ou defaults) que ainda faltam imprimir
- */
-static Out_t
-_Get_Root_COutput_To_Print (const bool isError)
-{
-	arrayList_t rootList = NULL;
-	if(isError == true) {
-		rootList = _Get_RootList_Error();
-	} else {
-		rootList = _Get_RootList();
-	}
+_TL		if(isTagADD == true) // run tag <?cweb #add
+		{
+			// trata se for a tag <cweb #add \"
+			/**
+			 * para fins de deixar o código mais simples e harmonico.
+			 * Ele le o nome do arquivo e adiciona o mesmo como sendo uma tag #in
+			 * Em seguida manda executar a tag.
+			*/
+			char *tagAddName = get_new_name_tag_add();
+_TL			cweb::out::file(tagAddName, tagName);
+_TL			call_child(tagAddName); // run child 
+_TL			delete[] tagAddName; // free memory
+_TL		} else { // run tag <?cweb #in
+_TL			call_child(tagName); // run child
+_TL		}
+		
+		/////////////////////////////////////////////////////////////////
+		// treat the end of tag after NAME
+		/////////////////////////////////////////////////////////////////
+_TL		char *tagEnd = nameEnd; // descobre o começo depois do fim do nome
+_TL		tagEnd = &tagEnd[1]; // seta o primeiro character depois de '"' - após o fim do nome
 	
-	if(rootList->Len(rootList->self) == 0) { // verifica se ainda tem node root ou default para enviar
+_TL		if( strncmp(tagEnd, " ?>",    3) != 0)
+		{
+			// descobre o fim da linha onde ocorreu o erro
+_TL			char *endLine = strchr(tagEnd, '\n'); 
+_TL			if(endLine != NULL) {
+_TL				endLine[0] = '\0'; // posiciona um novo fim na string para impressão do erro.
+_TL			}
+		
+_TL			Error("WEB::OUT - Tag <?cweb is incorrect.\n"
+			"End of Tag found (until the end of line): \"%s\"\n"
+			"Expected one of these sequences: \" ?>\" (with \' \')\n"
+			"for more details see documentation.\nClient Output Name: \"%s\"\n"
+			"tag value is \"%s\"\nType of output is %s",
+			tagEnd, name, tagName, type());
+_TL		}
+	
+		/////////////////////////////////////////////////////////////////
+		// treat the end of tag after NAME
+		/////////////////////////////////////////////////////////////////
+_TL		data = strchr(tagEnd, '>');
+_TL		data = &data[1]; // passa para o próximo character
+_TL	}
+	
+	virtual char* get_new_name_tag_add()
+	{TRACE_FUNC
+		Error("WEB::OUT - This class cannot call this function.\nError in inheritance.\n"
+		"This function must only be called by class \"ContentFileName\"");
 		return NULL;
 	}
 	
-	// recebe e retira o node root da lista de nós roots que ainda faltam imprimir
-	Out_t root = (Out_t)rootList->Del(rootList->self, 0);
-	if(root == NULL) {
-		Error("Root Node is NULL.\nRootList Len: %d - After Del operation", rootList->Len(rootList->self));
+	virtual char* type() {TRACE_FUNC
+		return const_cast<char*>("string (char*)");
 	}
 	
-	if(root->hasPrinted == true) { // evita criação de loop e repetição na árvore de chamadas
-		Error("Root Node already printed.\nRoot Name: \"%s\"\nRootList Len: %d - After Del operation",
-			root->name, rootList->Len(rootList->self));
+	void init(const char *name)
+	{TRACE_FUNC
+		check(name);
+		
+		int len = strlen(name);
+		this->name = new char[len +1];
+		if(this->name == NULL) {
+			Error("CWEB::OUT - In allocation memory for output name.\n"
+			"name size is %d bytes\nName is \"%s\"\nerro is %d\nstr erro is \"%s\"",
+			len, name, errno, strerror(errno));
+		}
+		strcpy(this->name, name);
 	}
 	
-	return root;
-}
-
-/**
- * parser o client_output.
- * abre o arquivo (se for o caso) e joga todo o seu conteúdo para o cliente.
- * caso seja necessário, chamar outro clientOutput - também faz isso.
-*/
-static void
-_Parser(Out_t cout)
-{
-
-	if(cout->hasPrinted == true) {
-		Error("Node already printed. - Client Output name: \"%s\"", cout->name);
+	void check(const char *name)
+	{TRACE_FUNC
+		// check name 
+		if(name == NULL) {
+			Error("WEB::OUT - Name of output is NULL");
+		}
+		
+		if(strlen(name) < 1) {
+			Error("WEB::OUT - Name of output can not be a empty string");
+		}
+		
+		if(Has_Only_Alpha_Num(name) == false) {
+			Error("WEB::SESSION - Not a valid output name.\n"
+			"all character of name must be a letter (A to Z or a to z) or a digit (0 to 9) "
+			"or special character ('_' and '-').\nname: \"%s\"", name);
+		}
 	}
-	cout->hasPrinted = true; // coloca antes para evitar chamadas recursivas do mesmo cout
 	
-	/////////////////////////////////////////////////////////////////
-	// unifica o tratamento para todos os tipos
-	/////////////////////////////////////////////////////////////////
-	char *cout_data = NULL;
-	switch(cout->type) { 
-		case string:
-			cout_data = cout->var.str;
-			break;
-		case file_name:
-			cout_data = FileUtil_StrMap(cout->var.file_name, "file_name");
-			if(cout_data == NULL) {
-				Error("data file is NULL.\nType code: %d\nClient Output Name: \"%s\"",
-					cout->type, cout->name);
+	bool Has_Only_Alpha_Num(const char *str)
+	{TRACE_FUNC
+		for(int i=0; i < static_cast<int>(strlen(str)); ++i) {
+			if(isalnum(str[i]) == false &&
+				str[i] != '_' &&
+				str[i] != '-')
+			{
+				return false;
 			}
-			break;
-		case file:
-			cout_data = FileUtil_StrMap(cout->var.file, "file");
-			if(cout_data == NULL) {
-				Error("data file is NULL.\nType code: %d\nClient Output Name: \"%s\"",
-					cout->type, cout->name);
-			}
-			break;
-		default:
-			Error("Type wrong.\nType code: %d\nClient Output Name: \"%s\"", cout->type, cout->name);
+		}
+	
+		return true;
+	}
+};
+
+struct ContentFile: public Content
+{
+	FILE *file;
+	////////////////////////////////////////////////////////////////////////////////
+	// functions
+	////////////////////////////////////////////////////////////////////////////////
+	ContentFile(
+		const char *name,
+		FILE *file) : Content(name)
+	{/*TRACE_FUNC*/
+		if(file == NULL) {
+			Error("WEB::OUT - File output is NULL\nContent name is \"%s\"", name);
+		}
+		
+		this->file = file;
 	}
 	
-	_Parser_Main_Loop(cout, cout_data); // realiza o parser de fato - chama o main loop
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Construct Functions
-////////////////////////////////////////////////////////////////////////////////
-/*
-Out_t
-Out_StrMap_New_Interface()
-{
-	Out_t co = (Out_t)MM_Malloc(sizeof(Out_o));
-	if(co == NULL) {
-		Error("Allocated Space for Client Output Interface");
+	char* type() {/*TRACE_FUNC*/
+		return const_cast<char*>("file");
 	}
 	
-	// insere o self
-	co->self = NULL;
-	
-	// insere as funções da interface
-	co->Set			= Out_StrMap_Set;
-	co->Print		= Out_StrMap_Print;
-	co->Print_Error = Out_StrMap_Print_Error;
-	
-	return co;
-}
+	void init_data()
+	{/*TRACE_FUNC*/
+		data = util::file::toStr(file);
+	}
+};
 
-
-Out_t
-Out_StrMap_Singleton_Interface()
+struct ContentFileName: public Content
 {
-	static Out_t icout = NULL;
+	char *fname; // file name
+	////////////////////////////////////////////////////////////////////////////////
+	// functions
+	////////////////////////////////////////////////////////////////////////////////
+	ContentFileName(
+		const char *name,
+		const char *fname) : Content(name)
+	{TRACE_FUNC
+		if(fname == NULL) {
+			Error("WEB::OUT - File name of output is NULL\nContent name is \"%s\"", name);
+		}
+		
+		int len = strlen(fname);
+		if(len < 1) {
+			Error("WEB::OUT - File name of output is a empty string");
+		}
+		this->fname = new char[len +1];
+		if(this->fname == NULL) {
+			Error("CWEB::OUT - In allocation memory for output file name.\n"
+			"file name size is %d bytes\nfile name is \"%s\"\nName is \"%s\"\nerro is %d\n"
+			"str erro is \"%s\"", len, fname, name, errno, strerror(errno));
+		}
+		strcpy(this->fname, fname);
+	}
 	
-	if(icout == NULL)
+	~ContentFileName() {
+		delete[] fname;
+	}
+	
+	char* get_new_name_tag_add()
+	{TRACE_FUNC
+		static int num = 0;
+	
+		const char prefix[14] = "___tag_add___";
+	
+		char *tagName = new char[strlen(prefix) + sizeof(int) +1];
+		if(tagName == NULL) {
+			Error("WEB::OUT - Allocating space for new name of tag add\n"
+			"Name of the file who tried to add is \"%s\"\nId of tag is %d\n"
+			"Tag is \"%s\"\nerro is %d\nstr erro is \"%s\"",
+			fname, num, tag, errno, strerror(errno));
+		}
+	
+		sprintf(tagName, "%s%d", prefix, num);
+		++num; // update num for the next name
+	
+		return tagName;
+	}
+	
+	char* type() {TRACE_FUNC
+		return const_cast<char*>("file name");
+	}
+	
+	void init_data() {TRACE_FUNC
+		data = util::file::toStr(fname);
+	}
+};
+
+class Out
+{ private:
+	////////////////////////////////////////////////////////////////////////////////
+	// inner structs
+	////////////////////////////////////////////////////////////////////////////////
+	struct cmp_str // use this to compare strings (C-style) in map function to find key map
 	{
-		icout = Out_StrMap_New_Interface();
-		if(icout == NULL)
+		bool operator()(char const *a, char const *b) const
 		{
-			Error("could not create singleton instance of Client Output.");
-		}
-	}
+			return std::strcmp(a, b) < 0;
+   		}
+	};
 	
-	return icout;
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
-// Public Functions
-////////////////////////////////////////////////////////////////////////////////
-/**
- *
- */
-int
-CWeb_Out_Set(const char *name, const void *output,
-			 const char *type, const char *opt)
-{
-	_Check(name, output, type, opt);
+	////////////////////////////////////////////////////////////////////////////////
+	// inner variables
+	////////////////////////////////////////////////////////////////////////////////
+	map<const char*, Content*, cmp_str> _map;
+	deque<Content*> _queue;
+	//queue<Print*> _print;
 	
-	// cria um objeto de saída
-	Out_t out = MM_Malloc(sizeof(Out_o));
-	if(out == NULL) {
-		Error("Not allocated space for out.");
-	}
-	
-	// guarda o output de acordo com o tipo
-	if(strcmp(type, "file") == 0)  {
-		out->var.file = (FILE*)output;
-	}
-	else if(strcmp(type, "file_name") == 0 ||
-			strcmp(type, "string") == 0) { // copia a string internamente 
-		char *strOut  = (char*)output;
-		char *str = MM_Malloc(strlen(strOut)+1);
-		if(str == NULL) {
-			Error("Allocated memory to keep output string.\noutput = \"%s\"\nouput len: %d",
-				strOut, strlen(strOut));
+	////////////////////////////////////////////////////////////////////////////////
+	// 
+	////////////////////////////////////////////////////////////////////////////////
+ public:
+ 	/**
+ 	 * Esta variável static running é utilizada para unificar e homogenizar a execução
+ 	 * tanto das operações normais quanto das operações de erro (_out e _error).
+ 	 * Ela guarda a instância de quem está operando e chama de acordo com quem 
+ 	 * chamou o print pela última vez.
+ 	 */
+ 	static Out *running;
+ 	
+ 	void set(const Content& cont)
+ 	{TRACE_FUNC
+ 		auto it = _map.find(cont.name);
+		if (it != _map.end()) {
+			Error("CWEB::OUT - There is already a content with the same name in output.\n"
+			"Choose another name\nName is \"%s\"", cont.name);
 		}
 		
-		strcpy(str, strOut); // copia a string
+		_map[cont.name] = const_cast<Content*>(&cont);
+		_queue.push_back(const_cast<Content*>(&cont));
+ 	}
+ 	
+ 	void print()
+ 	{TRACE_FUNC
+ 		running = this;
+ 		
+ 		for(auto i : _queue) {
+ 			i->print();
+ 		}
+	}
+	
+	void print(const char *name)
+	{TRACE_FUNC
+		if(name == NULL)
+		{
+			log_print_no_key_map(name);
+		} 
 		
-		// copia a string adequadamente com o tipo na union 
-		if(strcmp(type, "file_name") == 0) {
-			out->type = file_name;
-			out->var.file_name = str;
-		} else {
-			out->type = string;
-			out->var.str = str;
+		auto it = _map.find(name);
+		if (it == _map.end()) // key not found
+		{
+			log_print_no_key_map(name);
 		}
-	} else {
-		Error("Not a valid type.");
+		
+		return it->second->print();
 	}
 	
-	// guarda os dados passados pelo usuário
-	out->hasPrinted = false; // define que este tipo ainda não foi impresso no arquivo de saída
-	strcpy(out->name, name); // guarda o nome para o caso de erro
-	
+	void clean()
+	{
+		_map.clear();
+		_queue.clear();
+	}
 
-	
-	if(strcmp(opt, "root") == 0) // verifica e insere na lista de nós roots - insere sempre na última posição
-	{
-		out->opt = Root;
-		arrayList_t rootList = _Get_RootList();
-		rootList->Add(rootList->self, rootList->Len(rootList->self), (void*)out);
-	} 
-	else if(strcmp(opt, "leaf") == 0) // verifica e insere no map que contém todas as leafs
-	{
-		out->opt = Leaf;
-		map_t leafMap = _Get_LeafMap();
-		leafMap->Set(leafMap->self, name, (void*)out);
+ private:	
+	void log_print_no_key_map(const char *name)
+	{TRACE_FUNC
+		MError("CWEB::OUT - Fetch for a no name in output.\n"
+		"fectch name = \"%s\"\nnumber of keys is %d\n"
+		"List of all names in output that be parsed:", name, _map.size());
+		
+		for(auto elem : _map)
+		{
+   			fprintf(stderr, "[\"%s\"] = \"%s\"\n", elem.first, elem.second->type());
+		}
+		
+		abort();
 	}
-	else if(strcmp(opt, "error_root") == 0)
-	{
-		out->opt = Error_Root;
-		arrayList_t rootListError = _Get_RootList_Error();
-		rootListError->Add(rootListError->self, rootListError->Len(rootListError->self), (void*)out);
-	}
-	else if(strcmp(opt, "error_leaf") == 0)
-	{
-		out->opt = Error_Leaf;
-		map_t leafMapError = _Get_LeafMap_Error();
-		leafMapError->Set(leafMapError->self, name, (void*)out);
-	}
-	
-	return 0; // não houve erro
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// Variáveis globais
+////////////////////////////////////////////////////////////////////////////////
+Out _out;
+Out _error;
+Out* Out::running = NULL;
+
+void call_child(const char *name)
+{TRACE_FUNC
+	/**
+	 * não precisa verificar se 'name' e 'Out::running' são NULL.
+	 * as funções anteriores já fizeram isso.
+	 * como essa função não é exportada, ela sempre será segura.
+	 */
+	Out::running->print(name);
 }
 
-/**
- * Envia o arquivo gerado na saída para a saída padrão do fast-cgi.
- * NÃO É RECURSIVO - Se um arquivo já foi impresso, ele NÃO será novamente impresso.
- * Isto é feito para evitar entradas em loops infinitos
- */
-int CWeb_Out_Print()
+////////////////////////////////////////////////////////////////////////////////
+// Interface
+////////////////////////////////////////////////////////////////////////////////
+
+void
+cweb::out::str(
+	const char *name,
+	const char *data)
 {
-	Out_t cout = NULL;
-	while((cout = _Get_Root_COutput_To_Print(false)) != NULL) {
-		_Parser(cout);
-		// free memory
-/*		if(cout->type == file_name) {
-			MM_Free(cout->var.file_name);
-		}
-		MM_Free(cout);*/
-	}
-	
-	_StrMap_Print();
-	
-	_Check_Print_All_ClientOutput(false);
-	
-	return 0;
+	return _out.set(*(new Content(name, data)));
 }
 
-int CWeb_Out_Print_Error()
+void
+cweb::out::file(
+	const char *name,
+	FILE *file)
 {
-	Out_t cout = NULL;
-	while((cout = _Get_Root_COutput_To_Print(true)) != NULL) {
-		_Parser(cout);
-		// free memory
-/*		if(cout->type == file_name) {
-			MM_Free(cout->var.file_name);
-		}
-		MM_Free(cout);*/
-	}
-	
-	_StrMap_Print();
-	
-	_Check_Print_All_ClientOutput(true);
-	
-	return 0;
+	return _out.set(*(new ContentFile(name, file)));
+}
+
+void
+cweb::out::file(
+	const char *name,
+	const char *fname)
+{
+	return _out.set(*(new ContentFileName(name, fname)));
+}
+
+void
+cweb::out::print()
+{
+	return _out.print();
+}
+
+void
+cweb::out::clean()
+{
+	return _out.clean();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Error Interface
+////////////////////////////////////////////////////////////////////////////////
+
+void
+cweb::out::error::str(
+	const char *name,
+	const char *data)
+{
+	return _error.set(*(new Content(name, data)));
+}
+
+void
+cweb::out::error::file(
+	const char *name,
+	FILE *file)
+{
+	return _error.set(*(new ContentFile(name, file)));
+}
+
+void
+cweb::out::error::file(
+	const char *name,
+	const char *fname)
+{
+	return _error.set(*(new ContentFileName(name, fname)));
+}
+
+void
+cweb::out::error::print()
+{
+	return _error.print();
+}
+
+void
+cweb::out::error::clean()
+{
+	return _error.clean();
 }
 
 
-/*
-//	fprintf(stderr, "***************************************");
-//	fprintf(stderr, "********ENTER HERE         ************");
-//	fprintf(stderr, "***************************************");
-//	fprintf(stderr, "Cout name: \"%s\"\ncout path file: \"%s\"\n", cout->name, cout->var.file_name);
-*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
