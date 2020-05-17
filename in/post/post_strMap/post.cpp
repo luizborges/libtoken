@@ -7,11 +7,9 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 // Private Structs
-////////////////////////////////////////////////////////////////////////////////
-
-
+//////////////////////////////////////////////////////////////////////////////
 class Post
-{ private:
+{ protected:
 
 	struct cmp_str // use this to compare strings (C-style) in map function to find key map
 	{
@@ -21,45 +19,36 @@ class Post
    		}
 	};
 
-	char *_stdin; // keep all the post encode content - key + value - é o post tal como recebido no stdin
-	char *str; // only the value of the post's decode content
-	long size; // ambas as strings tem o mesmo tamanho -> str e value, always
+	char *_stdin = NULL; // keep all the post encode content - key + value - é o post tal como recebido no stdin
+	char *str = NULL; // only the value of the post's decode content
+	long size = 0; // ambas as strings tem o mesmo tamanho -> str e value, always
 	map<const char*, const char*, cmp_str> _map;
 	
  public:
- 	bool init()
+ 	Post()
  	{
- 		// verifica se é possível inicializar o post
-		char *rm = getenv("REQUEST_METHOD");
-		if(rm == NULL) {
-			Warn("CWEB::IN - NO REQUEST_METHOD.\ngetenv(\"REQUEST_METHOD\") = NULL");
-			return false;
-		}
-		if(strcmp(rm, "POST") != 0) {
-			Warn("CWEB::IN - REQUEST_METHOD IS NOT POST.\n"
-			"getenv(\"REQUEST_METHOD\") = \"%s\"", rm);
-			return false;
+ 		size = 2048;
+ 		_stdin = new char[size];
+		if(_stdin == NULL) {
+			Error("CWEB::POST - Allocated Space for _stdin Post Buffer.\n Size is %d\n"
+			"erro is %d\nstr erro is \"%s\"", size, errno, strerror(errno));
 		}
 		
-		char *ct = getenv("CONTENT_TYPE");
-		if(ct == NULL) {
-			Warn("CWEB::IN - NO CONTENT_TYPE\ngetenv(\"CONTENT_TYPE\") = NULL")
-			return false;
+		str = new char[size];
+		if(str == NULL) {
+			Error("CWEB::POST - Allocated Space for Post Undecoded Buffer.\n Size is %d\n"
+			"erro is %d\nstr erro is \"%s\"", size, errno, strerror(errno));
 		}
-		if(strcmp(ct, "application/x-www-form-urlencoded") != 0) {
-			Warn("CWEB::IN - CONTENT_TYPE NOT IMPLEMENTED.\n"
-			"getenv(\"CONTENT_TYPE\") = \"%s\".\n"
-			"This library only implemented getenv(\"CONTENT_TYPE\") = "
-			"\"application/x-www-form-urlencoded\"\n", ct);
-			return false;
-		}
-	
+	}
+ 	
+ 	virtual bool init(const long max_size)
+ 	{
 		///////////////////////////////////////////////////////////////////
 		// verifica o tamanho do post, verfica o tamanho dos buffers
 		///////////////////////////////////////////////////////////////////
 		char *strctlen = getenv("CONTENT_LENGTH");
 		if(strctlen == NULL) {
-			Warn("CWEB::IN - NO CONTENT_LENGTH\ngetenv(\"CONTENT_LENGTH\") = NULL")
+			Warn("CWEB::IN - NO CONTENT_LENGTH\ngetenv(\"CONTENT_LENGTH\") = NULL");
 			return false;
 		}
 		long stdin_size = strtol(strctlen, NULL, 0);
@@ -71,6 +60,16 @@ class Post
 			Error("CWEB::IN - CONTENT_LENGTH is lesser than 1\n"
 			"getenv(\"CONTENT_LENGTH\") = \"%s\"\nCONTENT_LENGTH = %ld",
 			strctlen, stdin_size);
+		}
+		
+		if(stdin_size > max_size && max_size != 0)
+		{
+			Error("CWEB::IN - size of input data recieve by HTTP POST METHOD is bigger"
+			"bigger than max size allowed for this type of input.\n"
+			"getenv(\"CONTENT_LENGTH\") = \"%s\"\nCONTENT_LENGTH = %ld bytes\n"
+			"Maximum size for HTTP POST METHOD -\"application/x-www-form-urlencoded\" "
+			"= %ld bytes\nYou can change this size.\nSee documentation for more details",
+			strctlen, stdin_size, max_size);
 		}
 	
 		if(stdin_size >= size)
@@ -109,7 +108,7 @@ class Post
 		return true; // foi possível inicializar o HTTP REQUEST METHOD POST no mapa de busca
 	}
 	
-	const char*
+	virtual const char*
 	post(const char *key)
 	{
 		if(key != NULL)
@@ -121,8 +120,9 @@ class Post
 		}
 		//PRINT_WARNING_IF_NO_KEY_IN_MAP:
 		Warn("CWEB::IN - Fetch for a no key of HTTP REQUEST METHOD POST.\n"
-		"fectch key = \"%s\"\nnumber of keys is %d\n"
-		"List of all keys in HTTP REQUEST METHOD POST that be parsed:", key, _map.size());
+		"type of the post is \"%s\"\nfectch key = \"%s\"\nnumber of keys is %d\n"
+		"List of all keys in HTTP REQUEST METHOD POST that be parsed:",
+		type(), key, _map.size());
 		
 		for(auto elem : _map)
 		{
@@ -131,7 +131,12 @@ class Post
 		
 		return NULL;
 	}
-
+	
+	virtual const char* type()
+	{
+		return "application/x-www-form-urlencoded";
+	}
+	
  private:
 	void fill_map()
 	{
@@ -184,10 +189,18 @@ class Post
 		}
 	}
 };
+
+////////////////////////////////////////////////////////////////////////////////
+// Treat when the getenv("CONTENT_TYPE") = "multipart/form-data"
+////////////////////////////////////////////////////////////////////////////////
+#include "multipart.cpp"
+
 ////////////////////////////////////////////////////////////////////////////////
 // Public Functions
 ////////////////////////////////////////////////////////////////////////////////
 static Post _post;
+static Mult _mult;
+static Post* _running = NULL;
 ////////////////////////////////////////////////////////////////////////////////
 // Interface
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,9 +208,38 @@ static Post _post;
  * Insere a string do http request method post in a map format
  */
 bool
-cweb::in::init_post()
+cweb::in::init_post(const long max_size)
 {
-	return _post.init();
+	// verifica se é possível inicializar o post
+	char *rm = getenv("REQUEST_METHOD");
+	if(rm == NULL) {
+		Warn("CWEB::IN - NO REQUEST_METHOD.\ngetenv(\"REQUEST_METHOD\") = NULL");
+		return false;
+	}
+	if(strcmp(rm, "POST") != 0) {
+		Warn("CWEB::IN - REQUEST_METHOD IS NOT POST.\n"
+		"getenv(\"REQUEST_METHOD\") = \"%s\"", rm);
+		return false;
+	}
+		
+	char *ct = getenv("CONTENT_TYPE");
+	if(ct == NULL) {
+		Warn("CWEB::IN - NO CONTENT_TYPE\ngetenv(\"CONTENT_TYPE\") = NULL");
+		return false;
+	}
+	if(strcmp(ct, "application/x-www-form-urlencoded") == 0) {
+		_running = &_post;
+	} else
+	if(strncmp(ct, "multipart/form-data", 19) == 0) {
+		_running = &_mult;
+	} else {
+		Error("CWEB::IN - CONTENT_TYPE NOT IMPLEMENTED.\n"
+		"getenv(\"CONTENT_TYPE\") = \"%s\".\n"
+		"This library only implemented getenv(\"CONTENT_TYPE\") = "
+		"\"application/x-www-form-urlencoded\" or \"multipart/form-data\"\n", ct);
+	}
+	
+	return _running->init(max_size);
 }
 
 
@@ -207,7 +249,8 @@ cweb::in::init_post()
 const char*
 cweb::in::post(const char *key)
 {
-	return _post.post(key);
+	if(_running == NULL) return NULL;
+	return _running->post(key);
 }
 
 

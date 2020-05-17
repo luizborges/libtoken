@@ -149,6 +149,15 @@ namespace cookie
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Interface to treat File in getenv(\"CONTENT_TYPE\") =  "multipart/form-data"
+////////////////////////////////////////////////////////////////////////////////
+class File
+{ public:
+	virtual char* name() = 0;
+	virtual long  size() = 0;
+	virtual void* data() = 0;
+};
+////////////////////////////////////////////////////////////////////////////////
 // Includes - In - input - get and post
 ////////////////////////////////////////////////////////////////////////////////
 namespace in
@@ -157,8 +166,10 @@ namespace in
 	 * inicializa os métodos abaixos.
 	 * a utilização de qualquer função abaixo, sem esta inicialização gera
 	 * comportamento indefinido.
+	 * @arg max_size = tamanho máximo da entrada, em bytes.
+	 * Se o valor for 0, essa variável será desconsiderada, que é o valor default
 	 */
-	extern bool init();
+	extern bool init(const long max_size = 0);
 	
 	/**
 	 * serve tanto para 'get' quanto 'post'.
@@ -190,7 +201,7 @@ namespace in
 	 * getenv("REQUEST_METHOD") = "POST".
 	 * OBS: não é necessário chamar, pois já é chamada implicitamente pelo init();
 	 */
-	extern bool init_post();
+	extern bool init_post(const long max_size = 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
