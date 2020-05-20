@@ -31,13 +31,15 @@ class Post
  		_stdin = new char[size];
 		if(_stdin == NULL) {
 			Error("CWEB::POST - Allocated Space for _stdin Post Buffer.\n Size is %d\n"
-			"erro is %d\nstr erro is \"%s\"", size, errno, strerror(errno));
+			"POST type is \"application/x-www-form-urlencoded\"\nerro is %d\n"
+			"str erro is \"%s\"", size, errno, strerror(errno));
 		}
 		
 		str = new char[size];
 		if(str == NULL) {
 			Error("CWEB::POST - Allocated Space for Post Undecoded Buffer.\n Size is %d\n"
-			"erro is %d\nstr erro is \"%s\"", size, errno, strerror(errno));
+			"POST type is \"application/x-www-form-urlencoded\"\nerro is %d\n"
+			"str erro is \"%s\"", size, errno, strerror(errno));
 		}
 	}
  	
@@ -48,17 +50,19 @@ class Post
 		///////////////////////////////////////////////////////////////////
 		char *strctlen = getenv("CONTENT_LENGTH");
 		if(strctlen == NULL) {
-			Warn("CWEB::IN - NO CONTENT_LENGTH\ngetenv(\"CONTENT_LENGTH\") = NULL");
-			return false;
+			Error("CWEB::IN - NO CONTENT_LENGTH\ngetenv(\"CONTENT_LENGTH\") = NULL\n"
+			"POST type is \"application/x-www-form-urlencoded\"");
 		}
 		long stdin_size = strtol(strctlen, NULL, 0);
 		if(stdin_size == 0L) {
 			Error("CWEB::IN - strtol()\nstrtol() = 0L\ngetenv(\"CONTENT_LENGTH\") = \"%s\"\n"
-			"erro is %d\nstr erro is \"%s\"", strctlen, errno, strerror(errno));
+			"POST type is \"application/x-www-form-urlencoded\"\nerro is %d\n"
+			"str erro is \"%s\"", strctlen, errno, strerror(errno));
 		}
 		if(stdin_size < 0L) {
 			Error("CWEB::IN - CONTENT_LENGTH is lesser than 1\n"
-			"getenv(\"CONTENT_LENGTH\") = \"%s\"\nCONTENT_LENGTH = %ld",
+			"getenv(\"CONTENT_LENGTH\") = \"%s\"\nCONTENT_LENGTH = %ld"
+			"POST type is \"application/x-www-form-urlencoded\"",
 			strctlen, stdin_size);
 		}
 		
@@ -82,16 +86,16 @@ class Post
 			if(_stdin == NULL) {
 				Error("CWEB::IN - Allocated Space for STDIN POST - String Default.\n"
 				"getenv(\"CONTENT_LENGTH\") = \"%s\"\nTried to allocated %d bytes\n"
-				"erro is %d\nstr erro is \"%s\"",
-				strctlen, size*sizeof(char), errno, strerror(errno));
+				"POST type is \"application/x-www-form-urlencoded\"\nerro is %d\n"
+				"str erro is \"%s\"", strctlen, size*sizeof(char), errno, strerror(errno));
 			}
 			
 			str = static_cast<char*>(malloc(size*sizeof(char)));
 			if(str == NULL) {
 				Error("CWEB::IN - Allocated Space for POST - String Default.\n"
 				"getenv(\"CONTENT_LENGTH\") = \"%s\"\nTried to allocated %d bytes\n"
-				"erro is %d\nstr erro is \"%s\"",
-				strctlen, size*sizeof(char), errno, strerror(errno));
+				"POST type is \"application/x-www-form-urlencoded\"\nerro is %d\n"
+				"str erro is \"%s\"", strctlen, size*sizeof(char), errno, strerror(errno));
 			}
 		}
 	
@@ -100,8 +104,8 @@ class Post
 		if(read != static_cast<size_t>(stdin_size)) {
 			Error("CWEB::IN - Reading post content and putting it into postStr.\n"
 			"Read in post content: %ld\nCONTENT_LENGTH string: \"%s\"\nCONTENT_LENGTH: %ld\n"
-			"erro is %d\nstr erro is \"%s\"",
-			read, strctlen, stdin_size, errno, strerror(errno));
+			"POST type is \"application/x-www-form-urlencoded\"\nerro is %d\n"
+			"str erro is \"%s\"", read, strctlen, stdin_size, errno, strerror(errno));
 		}
 		
 		fill_map();
@@ -158,6 +162,7 @@ class Post
 			if(cweb::decode(keyDecode, key, keyLen) != true) { // decode the key
 				Error("CWEB::IN - Decoding key in HTTP REQUEST METHOD POST.\n"
 				"key enconding: \"%s\"\nkey decode (wrong value): \"%s\"\nKey length: %d\n"
+				"POST type is \"application/x-www-form-urlencoded\"\n"
 				"HTTP post: \"%s\"\n", key, keyDecode, keyLen, _stdin);
 			}
 			posInitNextStr += strlen(keyDecode) +2; // atualiza a nova posição inicial
@@ -176,8 +181,8 @@ class Post
 			if(cweb::decode(contentDecode, content, contentLen) != true) {
 				Error("CWEB::IN - Decoding content in HTTP REQUEST METHOD POST.\n"
 				"content enconding: \"%s\"\nkey decode (wrong value): \"%s\"\n"
-				"content length: %d\nHTTP POST: \"%s\"\n",
-				content, contentDecode, contentLen, _stdin);
+				"content length: %d\nPOST type is \"application/x-www-form-urlencoded\"\n"
+				"HTTP POST: \"%s\"\n", content, contentDecode, contentLen, _stdin);
 			}
 			
 			posInitNextStr += strlen(contentDecode) +2; // atualiza a nova posição inicial
@@ -224,8 +229,7 @@ cweb::in::init_post(const long max_size)
 		
 	char *ct = getenv("CONTENT_TYPE");
 	if(ct == NULL) {
-		Warn("CWEB::IN - NO CONTENT_TYPE\ngetenv(\"CONTENT_TYPE\") = NULL");
-		return false;
+		Error("CWEB::IN - NO CONTENT_TYPE\ngetenv(\"CONTENT_TYPE\") = NULL");
 	}
 	if(strcmp(ct, "application/x-www-form-urlencoded") == 0) {
 		_running = &_post;
