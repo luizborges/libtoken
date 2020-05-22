@@ -178,22 +178,30 @@ namespace in
 	extern bool init(const long max_size = 0);
 	
 	/**
-	 * serve tanto para 'get' quanto 'post'.
+	 * serve tanto para 'get' quanto 'post' ("application/x-www-form-urlencoded").
 	 * a função init(); seta automaticamente qual é o method utilizado.
 	 */
 	extern const char* read(const char *key);
 	
 	/**
 	 * apenas para o getenv("REQUEST_METHOD") = "GET".
-	 * quando o getenv("REQUEST_METHOD") = "POST" o comportamento é indefinido.
+	 * valores diferentes o comportamento é indefinido.
 	 */
 	extern const char* get(const char *key);
 	
 	/**
 	 * apenas para o getenv("REQUEST_METHOD") = "POST".
-	 * quando o getenv("REQUEST_METHOD") = "GET" o comportamento é indefinido.
+	 * getenv("CONTENT_TYPE") = "application/x-www-form-urlencoded"
+	 * valores diferentes o comportamento é indefinido.
 	 */
 	extern const char* post(const char *key);
+	
+	/**
+	 * apenas para o getenv("REQUEST_METHOD") = "POST".
+	 * getenv("CONTENT_TYPE") = "multipart/form-data"
+	 * valores diferentes o comportamento é indefinido.
+	 */
+	extern file& fpost(const char *key); 
 	
 	/**
 	 * Inicializa a estrutura para armazenagem dos valores se:
@@ -205,9 +213,18 @@ namespace in
 	/**
 	 * Inicializa a estrutura para armazenagem dos valores se:
 	 * getenv("REQUEST_METHOD") = "POST".
+	 * getenv("CONTENT_TYPE") = "application/x-www-form-urlencoded"
 	 * OBS: não é necessário chamar, pois já é chamada implicitamente pelo init();
 	 */
 	extern bool init_post(const long max_size = 0);
+	
+	/**
+	 * Inicializa a estrutura para armazenagem dos valores se:
+	 * getenv("REQUEST_METHOD") = "POST".
+	 * getenv("CONTENT_TYPE") = "multipart/form-data"
+	 * OBS: não é necessário chamar, pois já é chamada implicitamente pelo init();
+	 */
+	extern bool init_fpost(const long max_size = 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
