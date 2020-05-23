@@ -306,7 +306,7 @@ class Mult
 
  private:
 	void init_boundary()
-	{TRACE_FUNC
+	{/*TRACE_FUNC*/
 		// não precisa de verificar, se é NULL pois já foi verificado antes
 		char *ct = getenv("CONTENT_TYPE");
 		ct = strstr(ct, "boundary=");
@@ -344,7 +344,7 @@ class Mult
 	}
 	
 	void fill_map()
-	{TRACE_FUNC
+	{/*TRACE_FUNC*/
 		parser_header_stdin(); // get the header
 		token.init(&_stdin[boundary_size-1], stdin_size-boundary_size+1,
 			"\r\n =;:\"",boundary, boundary_size-1);
@@ -371,7 +371,7 @@ class Mult
 	}
 	
 	void parser_header_stdin()
-	{TRACE_FUNC
+	{/*TRACE_FUNC*/
 		if(stdin_size <= boundary_size) {
 			Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"\n"
 			"Size of HTTP POST is lesser than boundary size.\n"
@@ -401,86 +401,86 @@ class Mult
 	}
 	
 	void parser_header(FileImpl& fi)
-	{TRACE_FUNC
-_TL		char *str = token.next();
-_TL		if(strcmp(str, "Content-Disposition") != 0) {
+	{/*TRACE_FUNC*/
+		char *str = token.next();
+		if(strcmp(str, "Content-Disposition") != 0) {
 			Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"\n"
 			"Expected: \"%s\"\nFound: \"%s\"", "Content-Disposition", str);
 		}
 		
-_TL		str = token.next();
-_TL		if(strcmp(str, "form-data") != 0) {
+		str = token.next();
+		if(strcmp(str, "form-data") != 0) {
 			Error("CWEB::IN - HTTP POST type is \"multipart/form-data\""
 			"Expected: \"%s\"\nFound: \"%s\"", "form-data", str);
 		}
 		
-_TL		str = token.next();
-_TL		if(strcmp(str, "name") != 0) {
+		str = token.next();
+		if(strcmp(str, "name") != 0) {
 			Error("CWEB::IN - HTTP POST type is \"multipart/form-data\""
 			"Expected: \"%s\"\nFound: \"%s\"", "name", str);
 		}
 		
-_TL		char*& key = str; // faz um alias -compilador otimiza isso - apenas para legibilidade
-_TL		key = token.next(); // nome do key do map
+		char*& key = str; // faz um alias -compilador otimiza isso - apenas para legibilidade
+		key = token.next(); // nome do key do map
 		
-_TL		auto it = _map.find(key);
-_TL		if (it != _map.end()) { // verifica se a chave já foi inserida no map
+		auto it = _map.find(key);
+		if (it != _map.end()) { // verifica se a chave já foi inserida no map
 			Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"");
 		}
 		
 		Warn("key=\"%s\"",key);
-_TL		_map[key] = &fi; // insere o arquivo no map
+		_map[key] = &fi; // insere o arquivo no map
 		
-_TL		str = token.next();
-_TL		if(str == NULL) { // fim da linha
+		str = token.next();
+		if(str == NULL) { // fim da linha
 			return;
 		}
-_TL		if(strcmp(str, "filename") != 0) {
+		if(strcmp(str, "filename") != 0) {
 			Error("CWEB::IN - HTTP POST type is \"multipart/form-data\""
 			"Expected: \"%s\"\nFound: \"%s\"", "filename", str);
 		}
 		
-_TL		fi._name = token.next();
+		fi._name = token.next();
 		
-_TL		token.next_line();
+		token.next_line();
 	}
 	
 	void parser_attribute(FileImpl& fi)
-	{TRACE_FUNC
-_TL		char *str = token.next();
-_TL		if(str == NULL) {
-_TL			fi._type = 1;
-_TL			fi._typeStr = new char[6];
-_TL			if(fi._typeStr == NULL) {
+	{/*TRACE_FUNC*/
+		char *str = token.next();
+		if(str == NULL) {
+			fi._type = 1;
+			fi._typeStr = new char[6];
+			if(fi._typeStr == NULL) {
 				Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"");
 			}
-_TL			sprintf(fi._typeStr, "char*");
-_TL			token.next_line();
-_TL			token.next_line();
-_TL			return;
+			sprintf(fi._typeStr, "char*");
+			token.next_line();
+			token.next_line();
+			return;
 		}
-_TL		if(strcmp(str, "Content-Type") != 0) {
-_TL			fi._type = 3;
-_TL			fi._typeStr = new char[13];
-_TL			if(fi._typeStr == NULL) {
+		if(strcmp(str, "Content-Type") != 0) {
+			fi._type = 3;
+			fi._typeStr = new char[13];
+			if(fi._typeStr == NULL) {
 				Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"");
 			}
-_TL			sprintf(fi._typeStr, "unknown type");
-		}
-		
-_TL		str = token.next();
-_TL		if(strcmp(str, "application/octet-stream") == 0) {
-_TL			fi._type = 2;
-_TL			fi._typeStr = new char[25];
-_TL			if(fi._typeStr == NULL) {
-				Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"");
-			}
-_TL			sprintf(fi._typeStr, "application/octet-stream");
+			sprintf(fi._typeStr, "unknown type");
 		}
 		
-_TL		token.next_line();
+		str = token.next();
+		if(strcmp(str, "application/octet-stream") == 0) {
+			fi._type = 2;
+			fi._typeStr = new char[25];
+			if(fi._typeStr == NULL) {
+				Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"");
+			}
+			sprintf(fi._typeStr, "application/octet-stream");
+		}
+		
+		token.next_line();
 		// se possui arquivo o arquivo está sempre marcado por 1 linha em branco
-_TL		token.next_line();
+		token.next_line();
 	}
 };
 

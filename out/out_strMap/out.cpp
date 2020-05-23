@@ -86,8 +86,8 @@ struct Content // use this to keep the array/variale that will be write in sessi
 			if(tag[6] == '@') // verifica se é o character de escape
 			{	// o character de escape é sempre omitido
 				tag[6] = '\0'; // finaliza a string que será impressa
-				data = &tag[7];// atualiza o ponteiro, para continuar a verificação da string
 				fprintf(stdout, "%s", data);
+				data = &tag[7];// atualiza o ponteiro, para continuar a verificação da string
 			} else {
 				/**
 				 * Está função realiza as operações:
