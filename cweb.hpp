@@ -47,12 +47,12 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 // Includes - namespace
 ////////////////////////////////////////////////////////////////////////////////
-#define TRACE_FUNC \
+/**#define TRACE_FUNC \
 fprintf(stderr, "\n*****************************************\n");\
 fprintf(stderr, "TRACE FUNC:: \"%s\" (%d, \"%s\")\n",\
 __PRETTY_FUNCTION__, __LINE__, __FILE__);\
 fprintf(stderr, "*****************************************\n");
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 // namespace
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,20 +181,20 @@ namespace in
 	 * serve tanto para 'get' quanto 'post' ("application/x-www-form-urlencoded").
 	 * a função init(); seta automaticamente qual é o method utilizado.
 	 */
-	extern const char* read(const char *key);
+	extern char* read(const char *key);
 	
 	/**
 	 * apenas para o getenv("REQUEST_METHOD") = "GET".
 	 * valores diferentes o comportamento é indefinido.
 	 */
-	extern const char* get(const char *key);
+	extern char* get(const char *key);
 	
 	/**
 	 * apenas para o getenv("REQUEST_METHOD") = "POST".
 	 * getenv("CONTENT_TYPE") = "application/x-www-form-urlencoded"
 	 * valores diferentes o comportamento é indefinido.
 	 */
-	extern const char* post(const char *key);
+	extern char* post(const char *key);
 	
 	/**
 	 * apenas para o getenv("REQUEST_METHOD") = "POST".
@@ -387,6 +387,34 @@ namespace out
 		extern void clean();
 	}
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Includes - Route
+////////////////////////////////////////////////////////////////////////////////
+/**
+ * os parâmetros são os mesmos.
+ * @PARAM PATH = string que contém o caminho requisitado, ou seja, deve ser igual ao
+ * retornado pela variável PATH_INFO que é preenchida pelo HTTP.
+ * @PARAM FUNC = função que deve ser chamada, caso o endereço seja requisitado.
+ * para utilizar mais de um código, apenas usar o parênteses ex: page_index(); page_index_2()
+ */
+#define cweb_route_init(PATH, FUNC) \
+	char *cweb_route_path = getenv("PATH_INFO"); \
+	if(cweb_route_path == NULL) {\
+		FUNC;\
+	} else if(strcmp(cweb_route_path, PATH) == 0) {\
+		FUNC;\
+	}
+
+#define cweb_route(PATH, FUNC) \
+	else if(strcmp(cweb_route_path, PATH) == 0) {\
+		FUNC;\
+	}
+
+#define cweb_route_error(FUNC) \
+	else {\
+		FUNC;\
+	}
 } // end namespace cweb
 
 

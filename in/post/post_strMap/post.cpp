@@ -220,10 +220,10 @@ cweb::in::init_post(const long max_size)
 /**
  * 
  */
-const char*
+char*
 cweb::in::post(const char *key)
 {
-	return _post.post(key);
+	return const_cast<char*>(_post.post(key));
 }
 
 
