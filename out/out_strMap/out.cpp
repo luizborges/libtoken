@@ -287,7 +287,7 @@ struct ContentFile: public Content
 	
 	void init_data()
 	{/*TRACE_FUNC*/
-		data = util::file::toStr(file);
+		data = u::file::toStr(file);
 	}
 };
 
@@ -347,7 +347,7 @@ struct ContentFileName: public Content
 	}
 	
 	void init_data() {/*TRACE_FUNC*/
-		data = util::file::toStr(fname);
+		data = u::file::toStr(fname);
 	}
 };
 

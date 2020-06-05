@@ -338,7 +338,7 @@ cweb::cookie::set(const char *key, const char *value,
 	// return the string
 	///////////////////////////////////////////////////////////////////
 	rewind(tmp);
-	char* _cookie = util::file::toStr(tmp); // já fecha o arquivo
+	char* _cookie = u::file::toStr(tmp); // já fecha o arquivo
 	return _cookie;
 }
 

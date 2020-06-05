@@ -123,7 +123,7 @@ cweb::encode(const char* in,
 	}
 	
 	rewind(tmp);
-	char *out = util::file::toStr(tmp); // esta função já fecha o arquivo
+	char *out = u::file::toStr(tmp); // esta função já fecha o arquivo
 	
 	return out;
 }
