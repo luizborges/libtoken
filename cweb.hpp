@@ -21,6 +21,7 @@
 
 
 #include <unistd.h> // unix standard library
+#include <sys/syscall.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // Includes - default libraries - C++
@@ -71,7 +72,7 @@ decode(char* out,
 /**
  * substituiu o character ' ' pelo character '+'.
  * @return retorna a string codificada em caso de acerto.
- * em caso de erro, retorna NULL.
+ * em caso de erro, retorna nullptr.
  */
 extern char*
 encode(const char* in,
@@ -86,20 +87,20 @@ namespace cookie
 	extern bool init();
 
 	/**
-	 * @arg key: if the value is NULL, this function return NULL.
-	 * @return: NULL if the key does not exists in map or the value is NULL.
+	 * @arg key: if the value is nullptr, this function return nullptr.
+	 * @return: nullptr if the key does not exists in map or the value is nullptr.
 	 */
 	extern const char* get(const char *key);
 	
 	
 	/**
 	 * Retorna uma string contendo todo o conteúdo do cookie.
-	 * os valores key e value, não podem ser NULL e também não podem ser uma
+	 * os valores key e value, não podem ser nullptr e também não podem ser uma
 	 * string vazia.
 	 * Insert the string: " GMT" ao final do tempo designado.
-	 * O tempo é recuperado com a função localtime(time(NULL) + expires_sec)
+	 * O tempo é recuperado com a função localtime(time(nullptr) + expires_sec)
 	 * Se o argumento "expires_sec" é 0, ele não é inserido.
-	 * Se os argumentos "domain" e "path" são NULLs, eles não são inseridos.
+	 * Se os argumentos "domain" e "path" são nullptrs, eles não são inseridos.
 	 * se os argumentos "isSecure" e "isHttpOnly" são false, eles não são inseridos.
 	 * Ao final da string do cookie é incluído o charactere '\n'
 	 * OBS: se o valor do expires_sec for -1, o tempo será setado para
@@ -118,12 +119,12 @@ namespace cookie
 	 * A saída é gravada pela função fprintf(stdout, ... );
 	 * A gravação é feita por partes, ou seja, não é criada toda a string e então
 	 * inserida no stdout.
-	 * os valores key e value, não podem ser NULL e também não podem ser uma
+	 * os valores key e value, não podem ser nullptr e também não podem ser uma
 	 * string vazia.
 	 * Insert the string: " GMT" ao final do tempo designado.
-	 * O tempo é recuperado com a função localtime(time(NULL) + expires_sec)
+	 * O tempo é recuperado com a função localtime(time(nullptr) + expires_sec)
 	 * Se o argumento "expires_sec" é 0, ele não é inserido.
-	 * Se os argumentos "domain" e "path" são NULLs, eles não são inseridos.
+	 * Se os argumentos "domain" e "path" são nullptrs, eles não são inseridos.
 	 * se os argumentos "isSecure" e "isHttpOnly" são false, eles não são inseridos.
 	 * Ao final da string do cookie é incluído o charactere '\n'
 	 * OBS: se o valor do expires_sec for -1, o tempo será setado para
@@ -225,6 +226,23 @@ namespace in
 	 * OBS: não é necessário chamar, pois já é chamada implicitamente pelo init();
 	 */
 	extern bool init_fpost(const long max_size = 0);
+	
+	/**
+	 * Verifica se o valor de user_method é igual 
+	 * ao retornado pela função "getenv("REQUEST_METHOD")";
+	 * Também verifica se o valor de type é igual
+	 * ao retornado pela função "getenv("CONTENT_TYPE")"
+	 * @OBS: se o valor de type = nullptr -> não faz a verificação.
+	 * @OBS: o valor de user_method sempre é comparado com getenv("REQUEST_METHOD")
+	 * mesmo se ambos forem nullptr
+	 * @throw: essa sempre lança uma exceção em caso de erro.
+	 * a exceção é uma "string&", cujo conteúdo contem:
+	 * 1-> identificação: "cweb::error::inMethod["
+	 * 2-> onde ocorreu o erro na verificação.
+	 * TODO - implementar uma conferência por meio de uma classe de erro específica.
+	 */
+	extern void method(const char *user_method = nullptr,
+						const char *type = nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,6 +271,11 @@ namespace session
 			const time_t del = 10*60); // valor default de 10 min
 	
 	
+	/**
+	 * Carrega a sessão que se encontra no arquivo de sessão definido pelo cookie "sid".
+	 * @return: true: caso consiga carregar os valores.
+	 * false: otherwise
+	 */
 	extern bool load();
 	
 	/**
@@ -265,7 +288,8 @@ namespace session
 	/**
 	 * Retorna o valor do cookie sid.
 	 * uma vez que a função 'sid()' foi chamada, esta função já reconhece o sid().
-	 * caso não seja chamada, e se deseja salvar a sessão, deve-se chamar a função como
+	 * caso a função 'sid()' não foi chamada anteriormente, 
+	 * e se deseja salvar a sessão, deve-se chamar a função como
 	 * o parâmetro como true: cweb::session::save(true)
 	 */
 	extern char* save(const bool toSave = false);
@@ -273,42 +297,33 @@ namespace session
 	/**
 	 * Retorna true em caso de inserção e falso em caso contrário.
 	 */
-	extern bool set(
-		const char *key = NULL,
-		const void *value = NULL,
-		const int size = 0,
+	extern bool setv(
+		const char *key = nullptr,
+		const void *value = nullptr,
+		const int size = sizeof(int),
 		const int numElem = 1);
 
-	template <typename T>
-	inline bool set(
-		const char *key,
-		T value);
-	
 	extern inline bool
 	set(const char *key, const char *value);
-
+	
 	extern inline bool
-	set(const char *key, const string& value);
+	set(const char *key, const int value);
 
 	extern void* getv( // get vector
-		const char *key = NULL,
-		int *numElem = NULL,
-		int *size = NULL);
-	
-	template <typename T>
-	inline T get(const char *key);
-	
-	inline char* get(const char *key = NULL);
+		const char *key,
+		int *numElem = nullptr,
+		int *size = nullptr);
+		
+	extern inline char* get(const char *key);
+	extern inline int geti(const char *key);
 	
 	extern void* delv( // del vector
-		const char *key = NULL,
-		int *numElem = NULL,
-		int *size = NULL);
+		const char *key,
+		int *numElem = nullptr,
+		int *size = nullptr);
 	
-	template <typename T>
-	inline T del(const char *key);
-	
-	inline char* del(const char *key = NULL);
+	inline char* del(const char *key);
+	inline int deli(const char *key);
 	
 	/**
 	 * remove todas as chaves e seus valores da sessão.
@@ -400,7 +415,7 @@ namespace out
  */
 #define cweb_route_init(PATH, FUNC) \
 	char *cweb_route_path = getenv("PATH_INFO"); \
-	if(cweb_route_path == NULL) {\
+	if(cweb_route_path == nullptr) {\
 		FUNC;\
 	} else if(strcmp(cweb_route_path, PATH) == 0) {\
 		FUNC;\
@@ -433,38 +448,11 @@ cweb::cookie::pdel(const char *key)
 	return cweb::cookie::print(key, "", -1);
 }
 
-template <typename T>
-inline bool cweb::session::set(
-		const char *key,
-		T value)
-{
-	T *ptr = new T;
-	*ptr = value;
-	return cweb::session::set(key, ptr, sizeof(T), 1);
-}
-
 inline bool
 cweb::session::set(const char *key, const char *value)
 {
-	return cweb::session::set(key, value,
+	return cweb::session::setv(key, value,
 		sizeof(char), strlen(value)+1);
-}
-
-inline bool
-cweb::session::set(const char *key, const string& value)
-{
-	return cweb::session::set(key, value.c_str(),
-		sizeof(char), strlen(value.c_str())+1);
-}
-
-template <typename T>
-inline T cweb::session::get(const char *key)
-{
-	T* ptr = static_cast<T*>(cweb::session::getv(key));
-	if(ptr == NULL) {
-		return static_cast<T>(NULL);
-	}
-	return *ptr;
 }
 
 inline char*
@@ -474,21 +462,40 @@ cweb::session::get(const char *key)
 		cweb::session::getv(key));
 }
 
-template <typename T>
-inline T cweb::session::del(const char *key)
-{
-	T* ptr = static_cast<T*>(cweb::session::delv(key));
-	if(ptr == NULL) {
-		return static_cast<T>(NULL);
-	}
-	return *ptr;
-}
-
 inline char*
 cweb::session::del(const char *key)
 {
 	return static_cast<char*>(
 		cweb::session::delv(key));
+}
+
+inline bool
+cweb::session::set(const char *key, const int value)
+{ try {
+	int* _i = new int;
+	*_i = value;
+	return cweb::session::setv(key, _i,
+		sizeof(int), 1);
+ } catch(u::error& e) { throw err();
+ } catch(std::bad_alloc& e) { throw err("std::bad_alloc - \"%s\"", e.what()); }
+}
+
+inline int
+cweb::session::geti(const char *key)
+{
+	int* _i = static_cast<int*>(
+		cweb::session::getv(key));
+	if(_i == nullptr) throw err("no integer key\nkey = \"%s\"", key);
+	return *_i;
+}
+
+inline int
+cweb::session::deli(const char *key)
+{
+	int* _i = static_cast<int*>(
+		cweb::session::delv(key));
+	if(_i == nullptr) throw err("no integer key\nkey = \"%s\"", key);
+	return *_i;
 }
 #endif // CWEBPP_H
 

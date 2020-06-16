@@ -24,7 +24,7 @@ class Session
 	
 	struct Content // use this to keep the array/variale that will be write in session file
 	{
-		void* value = nullptr;
+		void* value = NULL;
 		int size = 0;
 		int numElem = 0;
 	};
@@ -32,9 +32,9 @@ class Session
 	////////////////////////////////////////////////////////////////////////////////
 	// inner variables
 	////////////////////////////////////////////////////////////////////////////////
-	char *dir   = nullptr;
-	char *fname = nullptr;
-	char *_sid   = nullptr;
+	char *dir   = NULL;
+	char *fname = NULL;
+	char *_sid   = NULL;
 	bool toSave = false;
 	time_t life = 5*60; // 5 minutos tempo default de duração da sessão
 	map<const char*, Content*, cmp_str> _map;
@@ -49,17 +49,16 @@ class Session
 	void config(const char *dirFileSession = "",
 				const time_t lifeSession = 5*60, // valor default de 5 min
 				const time_t del = 10*60) // valor default de 10 min);
-	{ try {
+	{
 		setDir(dirFileSession);
 		life = lifeSession;
 		remove_old_files(del);
-	 } catch(u::error& e) { throw err(); }
 	}
 	
 	bool load()
 	{ try {
 		FILE* fs = getFile();
-	   	if(fs == nullptr) {
+	   	if(fs == NULL) {
    			Warn("CWEB::SESSION - File Session is \"%s\"\nerro is %d\nstr erro is \"%s\"",
 			fname, errno, strerror(errno));
 			return false;
@@ -75,7 +74,7 @@ class Session
    		////////////////////////////////////////////////////////////////////////////////
 		// force call save() or sid()
 		////////////////////////////////////////////////////////////////////////////////
-		_sid = nullptr;
+		_sid = NULL;
 		toSave = false;
    		
    		return true;
@@ -84,7 +83,7 @@ class Session
 	
 	char* sid()
 	{ try {
-		char *nsec = nullptr; // nano seconds
+		char *nsec = NULL; // nano seconds
 		bool swap  = false;
 		#if defined(unix) || defined(__unix) || defined(__unix__) || (defined (__APPLE__) && defined (__MACH__)) // Unix (Linux, *BSD, Mac OS X)
 		
@@ -102,14 +101,14 @@ class Session
 		
 		#endif
 		#endif// for windows and olther system
-		if(nsec == nullptr)
+		if(nsec == NULL)
 		{
 	 _		nsec = new char[1];
 			*nsec = '\0';
 		}
-		srand(time(nullptr));
+		srand(time(NULL));
 		int al = rand();
-		time_t current = time(nullptr);
+		time_t current = time(NULL);
 		int sl = 5*sizeof(int)+sizeof(time_t)+strlen(nsec)+1;
 	 _	_sid = new char[sl];
 		
@@ -151,18 +150,18 @@ class Session
 		////////////////////////////////////////////////////////////////////////////////
 		// remove the current file session name
 		////////////////////////////////////////////////////////////////////////////////
-		if(fname != nullptr && toSave == false)
+		if(fname != NULL && toSave == false)
 		{
    			u::remove(fname);
-			fname = nullptr;
+			fname = NULL;
 		}
 		
 		////////////////////////////////////////////////////////////////////////////////
 		// create file session
 		////////////////////////////////////////////////////////////////////////////////
-		if(toSave == false) return nullptr;
+		if(toSave == false) return NULL;
 		
-		if(_sid == nullptr) {
+		if(_sid == NULL) {
 			sid();
 		}
 		
@@ -179,13 +178,13 @@ class Session
 	}
 	
 	bool set(
-		const char *key = nullptr,
-		const void *value = nullptr,
+		const char *key = NULL,
+		const void *value = NULL,
 		const int size = 0,
 		const int numElem = 0)
 	{ try {
-		if(key == nullptr)   return false;
-		if(value == nullptr) return false;
+		if(key == NULL)   return false;
+		if(value == NULL) return false;
 		if(size < 1)      return false;
 		if(numElem < 1)   return false;
 		
@@ -201,45 +200,33 @@ class Session
 		cont->size  = size;
 		cont->numElem = numElem;
 		_map[key] = cont;
-		
-	/*	auto elem = _map.find(key);
-		fprintf(stderr, "\n%s\n", __PRETTY_FUNCTION__);
-   			fprintf(stderr, "key=\"%s\"\n", elem->first);
-   			fprintf(stderr, "len=\"%d\"\n", strlen(elem->first)+1);
-   			fprintf(stderr, "size=\"%d\"\n", elem->second->size);
-   			fprintf(stderr, "numElem=\"%d\"\n", elem->second->numElem);
-   			fprintf(stderr, "val=\"%s\"\n", (char*)elem->second->value);
-   			fprintf(stderr, "val=\"%s\"\n", (char*)value);
-   			fprintf(stderr, "val=\"%p\"\n", value);
-	*/	
-	//	log_print_no_key_map("");
 		return true;
 	 } catch(u::error& e) { throw err(); }
 	  catch(std::bad_alloc& e) { throw err("std::bad_alloc"); }
 	}
 	
 	void* get(
-		const char *key = nullptr,
-		int *numElem = nullptr,
-		int *size = nullptr)
+		const char *key = NULL,
+		int *numElem = NULL,
+		int *size = NULL)
 	{ try {
-		if(key == nullptr)
+		if(key == NULL)
 		{
 			log_print_no_key_map(key);
-			return nullptr;
+			return NULL;
 		} 
 		
 		auto it = _map.find(key);
 		if (it == _map.end()) // key not found
 		{
 			log_print_no_key_map(key);
-			return nullptr;
+			return NULL;
 		}
 		
-		if(numElem != nullptr) {
+		if(numElem != NULL) {
 			*numElem = it->second->numElem;
 		}
-		if(size != nullptr) {
+		if(size != NULL) {
 			*size = it->second->size;
 		}
 		
@@ -248,27 +235,27 @@ class Session
 	}
 	
 	void* del(
-		const char *key = nullptr,
-		int *numElem = nullptr,
-		int *size = nullptr)
+		const char *key = NULL,
+		int *numElem = NULL,
+		int *size = NULL)
 	{ try {
-		if(key == nullptr)
+		if(key == NULL)
 		{
 			log_print_no_key_map(key);
-			return nullptr;
+			return NULL;
 		} 
 		
 		auto it = _map.find(key);
 		if (it == _map.end()) // key not found
 		{
 			log_print_no_key_map(key);
-			return nullptr;
+			return NULL;
 		}
 		
-		if(numElem != nullptr) {
+		if(numElem != NULL) {
 			*numElem = it->second->numElem;
 		}
-		if(size != nullptr) {
+		if(size != NULL) {
 			*size = it->second->size;
 		}
 		
@@ -283,21 +270,20 @@ class Session
 	}
 	
 	int clean()
-	{ try {
+	{
 		int numKeys = _map.size();
 		_map.clear();
 		return numKeys;
-	 } catch(...) { throw err(); }
 	}
  private:
  
 	void setDir(const char *dirFileSession)
 	{
-		if(dirFileSession == nullptr) return;
+		if(dirFileSession == NULL) return;
 		
 		int size = strlen(dirFileSession);
 		dir = new char[size+1];
-		if(dir == nullptr) {
+		if(dir == NULL) {
 			Error("CWEB::SESSION - In allocation memory for directory.\nSize is %ld\n"
 				"Directory is \"%s\"\nerro is %d\nstr erro is \"%s\"",
 				size+1, dirFileSession, errno, strerror(errno));
@@ -313,7 +299,7 @@ class Session
 		// insere o character '/' ao final da str
 		if(dir[size-1] != '/' && strlen(dir) > 1) {
 			dir = (char*)realloc(dir, (size+2)*sizeof(char));
-			if(dir == nullptr) {
+			if(dir == NULL) {
 				Error("CWEB::SESSION - In reallocation memory for directory.\n"
 				"Size is %ld\nDirectory is \"%s\"\nerro is %d\nstr erro is \"%s\"",
 				size+2, dirFileSession, errno, strerror(errno));
@@ -345,8 +331,8 @@ class Session
 
 	 try {	
 	 	DIR *dir = opendir (this->dir); // open de directory
-		if(dir == nullptr) {
-			throw err("CWEB::SESSION - Couldn't open the directory where Session files is.\n"
+		if(dir == NULL) {
+			Error("CWEB::SESSION - Couldn't open the directory where Session files is.\n"
 			"Directory name passed is \"%s\"\nerro is %d\nstr erro is \"%s\"",
 			this->dir, errno, strerror(errno));
 		}
@@ -358,7 +344,7 @@ class Session
 	
 		// read each file in directory to remove the file how match the condition
 		struct dirent *ep;
-		while ((ep = readdir(dir)) != nullptr)
+		while ((ep = readdir(dir)) != NULL)
 		{
     	    bool isS = is_session_file(ep->d_name);
     	    if(isS == false) continue;
@@ -387,7 +373,7 @@ class Session
 	
 	bool is_session_file(const char *fname)
 	{
-		if(fname == nullptr) return false;
+		if(fname == NULL) return false;
 	
 		int len = strlen(fname);
 	
@@ -416,7 +402,7 @@ class Session
 		char strTimeSession[26];
 	 _	u::fread(strTimeSession, sizeof(char), 26, f);
 	
-		time_t current = time(nullptr);
+		time_t current = time(NULL);
 		char strc[26];
 		strcpy(strc, ctime(&current)); // it is necessary, sometimes ctime gives errors.
 
@@ -433,11 +419,11 @@ class Session
 	FILE* getFile()
 	{ try {
 		const char *sid = cweb::cookie::get("sid");
-		if(sid == nullptr) {
-			return nullptr;
+		if(sid == NULL) {
+			return NULL;
 		}
 	
-		if(dir == nullptr) // Session can be not config - so dir is nullptr
+		if(dir == NULL) // Session can be not config - so dir is NULL
 		{
 			dir = new char[1];
 			strncpy(dir, "", 1); // dir is set as the current directory
@@ -465,7 +451,7 @@ class Session
 	
 	 _	u::fread(strTimeSession, sizeof(char), 26, f);
 	
-		time_t current = time(nullptr);
+		time_t current = time(NULL);
 		char strc[26];
 		strcpy(strc, ctime(&current)); // it is necessary, sometimes ctime gives errors.
 
@@ -486,7 +472,7 @@ class Session
 	{ try {
 		int numKey = -1;
    	 _	u::fread(&numKey, sizeof(int), 1, f);
-		//fprintf(stderr, "%s::numKey is %d\n", __func__, numKey);
+		fprintf(stderr, "%s::numKey is %d\n", __func__, numKey);
    		if(numKey < 1) { // check value
    			return; // session file has no content
 			
@@ -547,12 +533,11 @@ class Session
 	
 	bool save_header(FILE *f)
 	{ try{
-		time_t current = time(nullptr);
+		time_t current = time(NULL);
 	 _	u::fwrite(&current, sizeof(time_t), 1, f);
 	 _	u::fwrite(ctime(&current), sizeof(char), 26, f );
 	
 		int numKey = static_cast<int>(_map.size());
-		//fprintf(stderr, "NUMKEY=%d\n", numKey);
 	 _	u::fwrite(&numKey, sizeof(int), 1, f);
 		
 		if(numKey < 1) {
@@ -566,18 +551,11 @@ class Session
 	}
 	
 	void save_body(FILE *f)
-	{ try { //log_print_no_key_map("");
+	{ try {
 		for(auto elem : _map) // percorre todos os elementos do map para salvar
 		{
    			int len = strlen(elem.first) +1;
    			
-   		/*	fprintf(stderr, "\n%s\n", __PRETTY_FUNCTION__);
-   			fprintf(stderr, "key=\"%s\"\n", elem.first);
-   			fprintf(stderr, "len=\"%d\"\n", len);
-   			fprintf(stderr, "size=\"%d\"\n", elem.second->size);
-   			fprintf(stderr, "numElem=\"%d\"\n", elem.second->numElem);
-   			fprintf(stderr, "val=\"%s\"\n", elem.second->value);
-  		*/	
 		 _	u::fwrite(&len, sizeof(int), 1, f);
 		 _	u::fwrite(elem.first, sizeof(char), len, f);
 		 _	u::fwrite(&elem.second->size, sizeof(elem.second->size), 1, f);
@@ -638,7 +616,7 @@ cweb::session::save(const bool toSave)
 }
 
 bool
-cweb::session::setv(
+cweb::session::set(
 	const char *key,
 	const void *value,
 	const int size,
