@@ -50,11 +50,13 @@ cweb::in::init(const long max_size)
 	}
 	
 	// descobre qual o REQUEST_METHOD passado
-	if(strcmp(rm, "GET") == 0) {
+	if(strcmp(rm, "GET") == 0)
+	{
 		_read = cweb::in::get;
-		return cweb::in::init_get();;
+		return cweb::in::init_get(max_size);
 	}
-	else if(strcmp(rm, "POST") == 0) {
+	else if(strcmp(rm, "POST") == 0)
+	{
 		char *ct = getenv("CONTENT_TYPE");
 		if(ct == nullptr) {
 			throw err("CWEB::IN - NO CONTENT_TYPE\ngetenv(\"CONTENT_TYPE\") = nullptr");
@@ -62,8 +64,8 @@ cweb::in::init(const long max_size)
 		if(strcmp(ct, "application/x-www-form-urlencoded") == 0) {
 			_read = cweb::in::post;
 			return cweb::in::init_post(max_size);
-		} else
-		if(strncmp(ct, "multipart/form-data", 19) == 0) {
+		} 
+		else if(strncmp(ct, "multipart/form-data", 19) == 0) {
 			_read = nullptr;
 			return cweb::in::init_fpost(max_size);
 		} else {

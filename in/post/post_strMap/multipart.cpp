@@ -244,7 +244,7 @@ class Mult
 			stdin_size, strctlen);
 		}
 		
-		if(stdin_size > max_size && max_size != 0)
+		if(stdin_size > max_size && max_size > 0)
 		{
 			Error("CWEB::IN - size of input data recieve by HTTP POST METHOD is bigger"
 			"bigger than max size allowed for this type of input.\n"

@@ -38,7 +38,7 @@ class Get
 		}
 	}
 
-	bool init(const long max_size = 0)
+	bool init()
 	{
 		// verifica se é possível inicializar o get
 		char *rm = getenv("REQUEST_METHOD");
@@ -60,16 +60,6 @@ class Get
 			Error("CWEB::IN - HTTP REQUEST METHOD GET STRING is NULL.");
 		}
 		hglen = strlen(httpg);
-		
-		if(hglen > max_size && max_size > 0)
-		{
-			Error("CWEB::IN - size of input data recieve by HTTP GET METHOD is bigger"
-			"bigger than max size allowed for this type of input.\n"
-			"strlen(getenv(\"QUERY_STRING\")) = %ld bytes\n"
-			"Maximum size for HTTP GET METHOD = %ld bytes\n"
-			"You can change this size.\nSee documentation for more details",
-			httpg, max_size);
-		}
 		
 		if(size <= hglen)
 		{
@@ -180,9 +170,9 @@ static Get _get;
  * Insere a string do http request method get in a map format
  */
 bool
-cweb::in::init_get(const long max_size)
+cweb::in::init_get()
 {
-	return _get.init(max_size);
+	return _get.init();
 }
 
 /**

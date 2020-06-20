@@ -174,7 +174,7 @@ namespace in
 	 * a utilização de qualquer função abaixo, sem esta inicialização gera
 	 * comportamento indefinido.
 	 * @arg max_size = tamanho máximo da entrada, em bytes.
-	 * Se o valor for 0, essa variável será desconsiderada, que é o valor default
+	 * Se o valor for <= 0, essa variável será desconsiderada, que é o valor default
 	 */
 	extern bool init(const long max_size = 0);
 	
@@ -209,7 +209,7 @@ namespace in
 	 * getenv("REQUEST_METHOD") = "GET".
 	 * OBS: não é necessário chamar, pois já é chamada implicitamente pelo init();
 	 */
-	extern bool init_get();
+	extern bool init_get(const long max_size = 0);
 	
 	/**
 	 * Inicializa a estrutura para armazenagem dos valores se:
@@ -309,11 +309,17 @@ namespace session
 	extern inline bool
 	set(const char *key, const int value);
 
+	/**
+	 * Retorna nullptr caso a chave key não exista no map.
+	 */
 	extern void* getv( // get vector
 		const char *key,
 		int *numElem = nullptr,
 		int *size = nullptr);
-		
+	
+	/**
+	 * Retorna nullptr caso a chave key não exista no map.
+	 */		
 	extern inline char* get(const char *key);
 	extern inline int geti(const char *key);
 	
