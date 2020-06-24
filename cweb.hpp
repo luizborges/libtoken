@@ -268,7 +268,7 @@ namespace session
 	extern void
 	config(const char *dirFileSession = "",
 			const time_t lifeSession = 5*60, // valor default de 5 min
-			const time_t del = 10*60); // valor default de 10 min
+			const time_t del = 7*60); // valor default de 7 min
 	
 	
 	/**
@@ -328,8 +328,8 @@ namespace session
 		int *numElem = nullptr,
 		int *size = nullptr);
 	
-	inline char* del(const char *key);
-	inline int deli(const char *key);
+	extern inline char* del(const char *key);
+	extern inline int deli(const char *key);
 	
 	/**
 	 * remove todas as chaves e seus valores da sessão.

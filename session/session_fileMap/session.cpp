@@ -38,7 +38,8 @@ class Session
 	bool toSave = false;
 	time_t life = 5*60; // 5 minutos tempo default de duração da sessão
 	map<const char*, Content*, cmp_str> _map;
-
+	
+	char *fname_old = nullptr;
  public:
  	Session()
  	{
@@ -48,7 +49,7 @@ class Session
  
 	void config(const char *dirFileSession = "",
 				const time_t lifeSession = 5*60, // valor default de 5 min
-				const time_t del = 10*60) // valor default de 10 min);
+				const time_t del = 7*60) // valor default de 7 min);
 	{ try {
 		setDir(dirFileSession);
 		life = lifeSession;
@@ -71,7 +72,7 @@ class Session
    	
    		load_map(fs);
    		u::fclose(fs);
-   		
+   		//u::remove(fname); // remove por questões de segurança
    		////////////////////////////////////////////////////////////////////////////////
 		// force call save() or sid()
 		////////////////////////////////////////////////////////////////////////////////
@@ -139,27 +140,28 @@ class Session
 		toSave = true;
 		
 		return _sid;
-	 } catch(u::error& e) { throw errl(u::line); }
-	 catch(std::bad_alloc& e) {
- 		throw errl( u::line, "std::bad_alloc");
+	 } catch(u::error& e) { throw errl(u::line);
+	 } catch(std::bad_alloc& e) {
+ 		throw errl( u::line, "std::bad_alloc : \"%s\"", e.what());
  	 }
 	}
 	
 	char* save(const bool _toSave = false)
 	{ try {
-		toSave = (toSave || _toSave) ? true:false;
 		////////////////////////////////////////////////////////////////////////////////
 		// remove the current file session name
 		////////////////////////////////////////////////////////////////////////////////
-		if(fname != nullptr && toSave == false)
+		/** não necessita mais pois é excluído assim que carregado a sessão load()
+		if(fname != nullptr && toSave != true)
 		{
    			u::remove(fname);
 			fname = nullptr;
 		}
-		
+		u::error::set_header(true);*/
 		////////////////////////////////////////////////////////////////////////////////
 		// create file session
 		////////////////////////////////////////////////////////////////////////////////
+		toSave = (toSave || _toSave) ? true:false;
 		if(toSave == false) return nullptr;
 		
 		if(_sid == nullptr) {
@@ -284,14 +286,14 @@ class Session
 	
 	int clean()
 	{ try {
-		int numKeys = _map.size();
+		auto numKeys = _map.size();
 		_map.clear();
 		return numKeys;
 	 } catch(...) { throw err(); }
 	}
- private:
  
-	void setDir(const char *dirFileSession)
+ private:
+  	void setDir(const char *dirFileSession)
 	{
 		if(dirFileSession == nullptr) return;
 		
@@ -389,7 +391,7 @@ class Session
 	{
 		if(fname == nullptr) return false;
 	
-		int len = strlen(fname);
+		auto len = strlen(fname);
 	
 		if(len < 9) return false;
 	
@@ -451,7 +453,7 @@ class Session
 		return fopen(fname, "rb");
 	 } catch(u::error& e) { throw err(); }
 	 catch(std::bad_alloc& e) {
- 		throw err("std::bad_alloc");
+ 		throw err("std::bad_alloc : \"%s\"", e.what());
  	 }
 	}
 	
@@ -489,7 +491,6 @@ class Session
 		//fprintf(stderr, "%s::numKey is %d\n", __func__, numKey);
    		if(numKey < 1) { // check value
    			return; // session file has no content
-			
 		}
 		
    		for(int i=0; i < numKey; ++i)
@@ -542,7 +543,7 @@ class Session
    			_map[key] = cont; // insere no map - map keep the reference not the pointer
 		}
 	 } catch(u::error& e) { throw errl(u::line); }
-	 catch(std::bad_alloc& e) { throw errl(u::line, "std::bad_alloc"); }
+	 catch(std::bad_alloc& e) { throw errl(u::line, "std::bad_alloc : \"%s\"", e.what()); }
 	}
 	
 	bool save_header(FILE *f)
