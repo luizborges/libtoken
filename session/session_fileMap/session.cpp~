@@ -39,7 +39,7 @@ class Session
 	time_t life = 5*60; // 5 minutos tempo default de duração da sessão
 	map<const char*, Content*, cmp_str> _map;
 	
-	std::unique_ptr fname_old = nullptr;
+	std::unique_ptr<char[]> fname_old;
  public:
  	Session()
  	{
@@ -72,7 +72,13 @@ class Session
    	
    		load_map(fs);
    		u::fclose(fs);
-   		//u::remove(fname); // remove por questões de segurança
+   		////////////////////////////////////////////////////////////////////////////////
+		// copy the fname to fname_old to remove it when cretates a new one
+		////////////////////////////////////////////////////////////////////////////////
+		auto size = std::strlen(fname) +1;
+		fname_old.reset(new char[size]); // +1 to \0
+		std::strcpy(fname_old.get(), fname);
+		
    		////////////////////////////////////////////////////////////////////////////////
 		// force call save() or sid()
 		////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +86,8 @@ class Session
 		toSave = false;
    		
    		return true;
-   	 } catch(u::error& e) { throw err(); }
+   	 } catch(u::error& e) { throw err();
+	 } catch(std::bad_alloc& e) { throw err("std::bad_alloc : \"%s\"", e.what()); }
 	}
 	
 	char* sid()
@@ -148,20 +155,18 @@ class Session
 	
 	char* save(const bool _toSave = false)
 	{ try {
+		toSave = (toSave || _toSave) ? true:false;
 		////////////////////////////////////////////////////////////////////////////////
 		// remove the current file session name
 		////////////////////////////////////////////////////////////////////////////////
-		/** não necessita mais pois é excluído assim que carregado a sessão load()
-		if(fname != nullptr && toSave != true)
+		/*if(fname != nullptr && toSave != true)
 		{
    			u::remove(fname);
 			fname = nullptr;
-		}
-		u::error::set_header(true);*/
+		}*/
 		////////////////////////////////////////////////////////////////////////////////
 		// create file session
 		////////////////////////////////////////////////////////////////////////////////
-		toSave = (toSave || _toSave) ? true:false;
 		if(toSave == false) return nullptr;
 		
 		if(_sid == nullptr) {
@@ -176,6 +181,16 @@ class Session
  		}
     	
     	u::fclose(f);
+    	
+    	////////////////////////////////////////////////////////////////////////////////
+		// remove the old current file session name - if new was created
+		////////////////////////////////////////////////////////////////////////////////
+    	if(fname_old.get() != nullptr)
+    	{
+    		//u::remove(fname_old.get());
+    		fname_old.reset();
+    	}
+    	
  		return _sid;
  	 } catch(u::error& e) { throw err(); }
 	}
@@ -204,7 +219,7 @@ class Session
 		cont->numElem = numElem;
 		_map[key] = cont;
 		
-	/*	auto elem = _map.find(key);
+	  /*	auto elem = _map.find(key);
 		fprintf(stderr, "\n%s\n", __PRETTY_FUNCTION__);
    			fprintf(stderr, "key=\"%s\"\n", elem->first);
    			fprintf(stderr, "len=\"%d\"\n", strlen(elem->first)+1);
@@ -213,11 +228,11 @@ class Session
    			fprintf(stderr, "val=\"%s\"\n", (char*)elem->second->value);
    			fprintf(stderr, "val=\"%s\"\n", (char*)value);
    			fprintf(stderr, "val=\"%p\"\n", value);
-	*/	
-	//	log_print_no_key_map("");
+	  */	
+	  //	log_print_no_key_map("");
 		return true;
-	 } catch(u::error& e) { throw err(); }
-	  catch(std::bad_alloc& e) { throw err("std::bad_alloc"); }
+	 } catch(u::error& e) { throw err();
+	 } catch(std::bad_alloc& e) { throw err("std::bad_alloc : \"%s\"", e.what()); }
 	}
 	
 	void* get(
