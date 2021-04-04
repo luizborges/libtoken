@@ -32,7 +32,7 @@ class Token
 		for(; in_idx < in_size; ++in_idx)
 		{
 			if(&in[in_idx] == NULL) {
-				Error("CWEB::IN - NO Token init valid. token is NULL.\n"
+				err("CWEB::IN - NO Token init valid. token is NULL.\n"
 				"Post type is \"multipart/form-data\"\n"
 				"Input is \"%s\"\nIndex NULL is %d", in, in_idx);
 			}
@@ -71,7 +71,7 @@ class Token
 		for(; in_idx < in_size; ++in_idx)
 		{
 			if(&in[in_idx] == NULL) {
-				Error("CWEB::IN - NO Token end valid. token is NULL.\n"
+				err("CWEB::IN - NO Token end valid. token is NULL.\n"
 				"Post type is \"multipart/form-data\"\n"
 				"Input is \"%s\"\nIndex NULL is %d", in, in_idx);
 			}
@@ -103,7 +103,7 @@ class Token
 			return &in[token_init];
 		}
 		
-		Error("CWEB::IN - Token end invalid.\n"
+		err("CWEB::IN - Token end invalid.\n"
 		"Post type is \"multipart/form-data\"\n"
 		"Input is \"%s\"\nIndex NULL is %d", in, in_idx);
 		return NULL;
@@ -176,7 +176,7 @@ class Token
 		}
 		
 		if(in_idx >= in_size) {
-			Error("CWEB::IN - Token end invalid.\n"
+			err("CWEB::IN - Token end invalid.\n"
 		"Post type is \"multipart/form-data\"\n"
 		"Input is \"%s\"\nIndex NULL is %d\npost size is %ld", in, in_idx, in_size);
 		}
@@ -229,24 +229,24 @@ class Mult
 		///////////////////////////////////////////////////////////////////
 		char *strctlen = getenv("CONTENT_LENGTH");
 		if(strctlen == NULL) {
-			Error("CWEB::IN - NO CONTENT_LENGTH\ngetenv(\"CONTENT_LENGTH\") = NULL\n"
+			err("CWEB::IN - NO CONTENT_LENGTH\ngetenv(\"CONTENT_LENGTH\") = NULL\n"
 			"Post type is \"multipart/form-data\"");
 		}
 		stdin_size = strtol(strctlen, NULL, 0);
 		if(stdin_size == 0L) {
-			Error("CWEB::IN - strtol()\nstrtol() = 0L\ngetenv(\"CONTENT_LENGTH\") = \"%s\"\n"
+			err("CWEB::IN - strtol()\nstrtol() = 0L\ngetenv(\"CONTENT_LENGTH\") = \"%s\"\n"
 			"POST type is \"multipart/form-data\"\nerro is %d\nstr erro is \"%s\"",
 			strctlen, errno, strerror(errno));
 		}
 		if(stdin_size < 0L) {
-			Error("CWEB::IN - CONTENT_LENGTH is lesser than 1\nCONTENT_LENGTH = %ld\n"
+			err("CWEB::IN - CONTENT_LENGTH is lesser than 1\nCONTENT_LENGTH = %ld\n"
 			"getenv(\"CONTENT_LENGTH\") = \"%s\"\nPOST type is \"multipart/form-data\"",
 			stdin_size, strctlen);
 		}
 		
 		if(stdin_size > max_size && max_size > 0)
 		{
-			Error("CWEB::IN - size of input data recieve by HTTP POST METHOD is bigger"
+			err("CWEB::IN - size of input data recieve by HTTP POST METHOD is bigger"
 			"bigger than max size allowed for this type of input.\n"
 			"getenv(\"CONTENT_LENGTH\") = \"%s\"\nCONTENT_LENGTH = %ld bytes\n"
 			"Maximum size for HTTP POST METHOD -\"multipart/form-data\" "
@@ -261,16 +261,16 @@ class Mult
 		
 		size_t read = fread(_stdin, sizeof(char), stdin_size, stdin);
 		if(read != static_cast<size_t>(stdin_size)) {
-			Error("CWEB::IN - Reading post content and putting it into postStr.\n"
+			err("CWEB::IN - Reading post content and putting it into postStr.\n"
 			"Read in post content: %ld\nCONTENT_LENGTH string: \"%s\"\nCONTENT_LENGTH: %ld\n"
 			"POST type is \"multipart/form-data\"\nerro is %d\nstr erro is \"%s\"",
 			read, strctlen, stdin_size, errno, strerror(errno));
 		}
 		_stdin[stdin_size] = '\0';
 		
-		//Warn("stdin is \"%s\"", _stdin);
+		//err("stdin is \"%s\"", _stdin);
 		init_boundary();
-		//Warn("boundary is \"%s\"", boundary);
+		//err("boundary is \"%s\"", boundary);
 		fill_map();
 		return true; // foi possível inicializar o HTTP REQUEST METHOD POST no mapa de busca
 	}
@@ -289,8 +289,8 @@ class Mult
 				return *it->second;
 			}
 		}
-		//PRINT_WARNING_IF_NO_KEY_IN_MAP:
-		Warn("CWEB::IN - Fetch for a no key of HTTP REQUEST METHOD POST.\n"
+		//PRINT_errING_IF_NO_KEY_IN_MAP:
+		err("CWEB::IN - Fetch for a no key of HTTP REQUEST METHOD POST.\n"
 		"type of the post is \"%s\"\nfectch key = \"%s\"\nnumber of keys is %d\n"
 		"List of all keys in HTTP REQUEST METHOD POST that be parsed:",
 		type(), key, _map.size());
@@ -311,7 +311,7 @@ class Mult
 		char *ct = getenv("CONTENT_TYPE");
 		ct = strstr(ct, "boundary=");
 		if(ct == NULL) {
-			Error("CWEB::IN - Reading HTTP POST CONTENT_TYPE.\n"
+			err("CWEB::IN - Reading HTTP POST CONTENT_TYPE.\n"
 			"POST type is \"multipart/form-data\"\n"
 			"getenv(\"CONTENT_TYPE\") has no \"boundary=\" parameter.\n"
 			"getenv(\"CONTENT_TYPE\") is \"%s\"", getenv("CONTENT_TYPE"));
@@ -329,7 +329,7 @@ class Mult
 		boundary_size += 3;  // "--" + '\0'
 		boundary = new char[boundary_size];
 		if(boundary == NULL) {
-			Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"\n"
+			err("CWEB::IN - HTTP POST type is \"multipart/form-data\"\n"
 			"Allocate memory for boundary.\nBoundary size is %d", boundary_size);
 		}
 		
@@ -349,12 +349,12 @@ class Mult
 		token.init(&_stdin[boundary_size-1], stdin_size-boundary_size+1,
 			"\r\n =;:\"",boundary, boundary_size-1);
 
-		Warn("stdin_size = %ld\nstdin=\"%s\"", stdin_size, _stdin);
+		err("stdin_size = %ld\nstdin=\"%s\"", stdin_size, _stdin);
 		token.next_line();
 		do {
 			FileImpl* _fi = new FileImpl();
 			if(_fi == NULL) {
-				Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"");
+				err("CWEB::IN - HTTP POST type is \"multipart/form-data\"");
 			}
 			FileImpl& fi = *_fi;
 			parser_header(fi);
@@ -363,8 +363,8 @@ class Mult
 			
 			long idx = -1;
 			bool b = token.next_line(&idx);
-			Warn("fi.data()=\"%s\"", fi._data);
-			Warn("idx=%ld | idxS=%ld| stdin_size=%ld | b=%s",
+			err("fi.data()=\"%s\"", fi._data);
+			err("idx=%ld | idxS=%ld| stdin_size=%ld | b=%s",
 			 idx,idx+boundary_size-1, stdin_size, b?"true":"false");
 			if(idx+boundary_size-1 >= stdin_size) break;
 		} while(true);
@@ -373,7 +373,7 @@ class Mult
 	void parser_header_stdin()
 	{/*TRACE_FUNC*/
 		if(stdin_size <= boundary_size) {
-			Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"\n"
+			err("CWEB::IN - HTTP POST type is \"multipart/form-data\"\n"
 			"Size of HTTP POST is lesser than boundary size.\n"
 			"Header of stdin is wrong.\nExpected boundary value.\nBoundary = \"%s\"\n"
 			"Boundary size is %d\nstdin size is %ld\nstdin is \"%s\"",
@@ -381,20 +381,20 @@ class Mult
 		}
 		
 		if(strncmp(_stdin, boundary, boundary_size-1) != 0) {
-			Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"\n"
+			err("CWEB::IN - HTTP POST type is \"multipart/form-data\"\n"
 			"Header of stdin is wrong.\nExpected boundary value.\nBoundary = \"%s\"\n"
 			"Boundary size is %d\nstdin is \"%s\"",&boundary[2], boundary_size, _stdin);
 		}
 		
 		//check if the stdin is empty
 		if(strncmp(&_stdin[boundary_size-1], "--\r\n", 4) == 0) {
-			Warn("CWEB::IN - HTTP POST type is \"multipart/form-data\"\n"
+			err("CWEB::IN - HTTP POST type is \"multipart/form-data\"\n"
 			"Body of HTTP POST is empty");
 			return;
 		}
 		
 		if(strncmp(&_stdin[boundary_size-1], "\r\n", 2) != 0) {
-			Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"\n"
+			err("CWEB::IN - HTTP POST type is \"multipart/form-data\"\n"
 			"Header of stdin is wrong.\nExpected boundary + \"\\r\\n\".\nBoundary = \"%s\"\n"
 			"Boundary size is %d\nstdin is \"%s\"", boundary, boundary_size, _stdin);
 		}
@@ -404,19 +404,19 @@ class Mult
 	{/*TRACE_FUNC*/
 		char *str = token.next();
 		if(strcmp(str, "Content-Disposition") != 0) {
-			Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"\n"
+			err("CWEB::IN - HTTP POST type is \"multipart/form-data\"\n"
 			"Expected: \"%s\"\nFound: \"%s\"", "Content-Disposition", str);
 		}
 		
 		str = token.next();
 		if(strcmp(str, "form-data") != 0) {
-			Error("CWEB::IN - HTTP POST type is \"multipart/form-data\""
+			err("CWEB::IN - HTTP POST type is \"multipart/form-data\""
 			"Expected: \"%s\"\nFound: \"%s\"", "form-data", str);
 		}
 		
 		str = token.next();
 		if(strcmp(str, "name") != 0) {
-			Error("CWEB::IN - HTTP POST type is \"multipart/form-data\""
+			err("CWEB::IN - HTTP POST type is \"multipart/form-data\""
 			"Expected: \"%s\"\nFound: \"%s\"", "name", str);
 		}
 		
@@ -425,10 +425,10 @@ class Mult
 		
 		auto it = _map.find(key);
 		if (it != _map.end()) { // verifica se a chave já foi inserida no map
-			Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"");
+			err("CWEB::IN - HTTP POST type is \"multipart/form-data\"");
 		}
 		
-		Warn("key=\"%s\"",key);
+		err("key=\"%s\"",key);
 		_map[key] = &fi; // insere o arquivo no map
 		
 		str = token.next();
@@ -436,7 +436,7 @@ class Mult
 			return;
 		}
 		if(strcmp(str, "filename") != 0) {
-			Error("CWEB::IN - HTTP POST type is \"multipart/form-data\""
+			err("CWEB::IN - HTTP POST type is \"multipart/form-data\""
 			"Expected: \"%s\"\nFound: \"%s\"", "filename", str);
 		}
 		
@@ -452,7 +452,7 @@ class Mult
 			fi._type = 1;
 			fi._typeStr = new char[6];
 			if(fi._typeStr == NULL) {
-				Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"");
+				err("CWEB::IN - HTTP POST type is \"multipart/form-data\"");
 			}
 			sprintf(fi._typeStr, "char*");
 			token.next_line();
@@ -463,7 +463,7 @@ class Mult
 			fi._type = 3;
 			fi._typeStr = new char[13];
 			if(fi._typeStr == NULL) {
-				Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"");
+				err("CWEB::IN - HTTP POST type is \"multipart/form-data\"");
 			}
 			sprintf(fi._typeStr, "unknown type");
 		}
@@ -473,7 +473,7 @@ class Mult
 			fi._type = 2;
 			fi._typeStr = new char[25];
 			if(fi._typeStr == NULL) {
-				Error("CWEB::IN - HTTP POST type is \"multipart/form-data\"");
+				err("CWEB::IN - HTTP POST type is \"multipart/form-data\"");
 			}
 			sprintf(fi._typeStr, "application/octet-stream");
 		}

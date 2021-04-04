@@ -32,9 +32,9 @@ class Get
  		size = 2048; // 2 kB is the default size of str to keep cookies
  		str = static_cast<char*>(malloc(2048*sizeof(char)));
  		if(str == NULL) {
-			Error("CWEB::IN - Allocated Space for Get - String Default.\n"
+			err("CWEB::IN - Allocated Space for Get - String Default.\n"
 			"Tried to allocated %d bytes\nerro is %d\nstr erro is \"%s\"",
-			size*sizeof(char), errno, strerror(errno));
+			size*sizeof(char), errno, strerr(errno));
 		}
 	}
 
@@ -43,11 +43,11 @@ class Get
 		// verifica se é possível inicializar o get
 		char *rm = getenv("REQUEST_METHOD");
 		if(rm == NULL) {
-			Warn("CWEB::IN - NO REQUEST_METHOD.\ngetenv(\"REQUEST_METHOD\") = NULL.");
+			err("CWEB::IN - NO REQUEST_METHOD.\ngetenv(\"REQUEST_METHOD\") = NULL.");
 			return false;
 		}
 		if(strcmp(rm, "GET") != 0) {
-			Warn("CWEB::IN - REQUEST_METHOD IS NOT GET.\n"
+			err("CWEB::IN - REQUEST_METHOD IS NOT GET.\n"
 			"getenv(\"REQUEST_METHOD\") = \"%s\"", rm);
 			return false;
 		}
@@ -57,13 +57,13 @@ class Get
 		///////////////////////////////////////////////////////////////////
 		httpg = getenv("QUERY_STRING"); // recupera a string 
 		if(httpg == NULL) {
-			Error("CWEB::IN - HTTP REQUEST METHOD GET STRING is NULL.");
+			err("CWEB::IN - HTTP REQUEST METHOD GET STRING is NULL.");
 		}
 		hglen = strlen(httpg);
 		
 		if(hglen > max_size && max_size > 0)
 		{
-			Error("CWEB::IN - size of input data recieve by HTTP GET METHOD is bigger"
+			err("CWEB::IN - size of input data recieve by HTTP GET METHOD is bigger"
 			"bigger than max size allowed for this type of input.\n"
 			"strlen(getenv(\"QUERY_STRING\")) = %ld bytes\n"
 			"Maximum size for HTTP GET METHOD = %ld bytes\n"
@@ -78,9 +78,9 @@ class Get
 		
 			str = static_cast<char*>(malloc(size*sizeof(char)));
 			if(str == NULL) {
-				Error("CWEB::IN - Allocated Space for Cookie - String Default.\n"
+				err("CWEB::IN - Allocated Space for Cookie - String Default.\n"
 				"Tried to allocated %d bytes\nerro is %d\nstr erro is \"%s\"",
-				size*sizeof(char), errno, strerror(errno));
+				size*sizeof(char), errno, strerr(errno));
 			}
 		}
 	
@@ -102,8 +102,8 @@ class Get
 				return it->second;
 			}
 		}
-		//PRINT_WARNING_IF_NO_KEY_IN_MAP:
-		Warn("CWEB::IN - Fetch for a no key of HTTP REQUEST METHOD GET.\n"
+		//PRINT_errING_IF_NO_KEY_IN_MAP:
+		err("CWEB::IN - Fetch for a no key of HTTP REQUEST METHOD GET.\n"
 		"fectch key = \"%s\"\nnumber of keys is %d\n"
 		"List of all keys in HTTP REQUEST METHOD GET that be parsed:", key, _map.size());
 		
@@ -133,7 +133,7 @@ class Get
 		
 			char *keyDecode = &str[posInitNextStr];
 			if(cweb::decode(keyDecode, key, keyLen) != true) { // decode the key
-				Error("CWEB::IN - Decoding key in HTTP REQUEST METHOD GET.\n"
+				err("CWEB::IN - Decoding key in HTTP REQUEST METHOD GET.\n"
 				"key enconding: \"%s\"\nkey decode (wrong value): \"%s\"\nKey length: %d\n"
 				"HTTP GET: \"%s\"\n", key, keyDecode, keyLen, httpg);
 			}
@@ -152,7 +152,7 @@ class Get
 			char *contentDecode = &str[posInitNextStr];
 			// decode o conteúdo do par do get
 			if(cweb::decode(contentDecode, content, contentLen) != true) {
-				Error("CWEB::IN - Decoding content in HTTP REQUEST METHOD GET.\n"
+				err("CWEB::IN - Decoding content in HTTP REQUEST METHOD GET.\n"
 				"content enconding: \"%s\"\nkey decode (wrong value): \"%s\"\n"
 				"content length: %d\nHTTP GET: \"%s\"\n",
 				content, contentDecode, contentLen, httpg);

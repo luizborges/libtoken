@@ -45,7 +45,7 @@ cweb::in::init(const long max_size)
 { try {
 	char *rm = getenv("REQUEST_METHOD");
 	if(rm == nullptr) {
-		MError("CWEB::IN - getenv(\"REQUEST_METHOD\") is nullptr");
+		err("CWEB::IN - getenv(\"REQUEST_METHOD\") is nullptr");
 		return false;
 	}
 	

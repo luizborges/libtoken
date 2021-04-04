@@ -15,10 +15,8 @@
 #include <math.h>
 #include <string.h>
 #include <stdbool.h>
-#include <ctype.h>
 #include <time.h>
 #include <errno.h>
-
 
 #include <unistd.h> // unix standard library
 #include <sys/syscall.h>
@@ -27,10 +25,20 @@
 // Includes - default libraries - C++
 ////////////////////////////////////////////////////////////////////////////////
 #include <iostream>
+#include <cstdio>
 #include <cstring>
+#include <string>
+#include <ctime>
+#include <ctype.h>
 #include <map> 
 #include <deque>
 #include <memory>
+#include <unordered_map>
+#include <fstream>
+#include <streambuf>
+#include <exception>
+
+#include <pqxx/pqxx> // postgres
 
 using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +53,7 @@ using namespace std;
 // Includes - my libraries
 ////////////////////////////////////////////////////////////////////////////////
 #include <util.hpp>
-#include <headers/stackTracer.h>
+//#include <headers/stackTracer.h>
 ////////////////////////////////////////////////////////////////////////////////
 // Includes - namespace
 ////////////////////////////////////////////////////////////////////////////////
@@ -377,11 +385,9 @@ namespace out
 	 * para liberar essas memórias utilize a função "void clean()"
  */
 
-	extern void str(const char *name, const char *output);
-	
-	extern void file(const char *name, FILE *output);
-	
-	extern void file(const char *name, const char *file_name);
+	extern void  str(const string& name, const string& output);
+	extern void file(const string& name, FILE *output);
+	extern void file(const string& name, const string& file_name);
 	
 	/**
 	 * Envia o arquivo gerado na saída para a saída padrão do fast-cgi.
@@ -504,6 +510,366 @@ cweb::session::deli(const char *key)
 	if(_i == nullptr) throw err("no integer key\nkey = \"%s\"", key);
 	return *_i;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// namespace cweb++
+////////////////////////////////////////////////////////////////////////////////
+namespace w
+{
+	////////////////////////////////////////////////////////////////////////////////
+	// Includes - Session
+	////////////////////////////////////////////////////////////////////////////////
+	/**
+	 * Observações gerais:
+	 * 1. a funções: operator[], del() e save() devem ser utilizadas somente com uma sessão
+	 * já existente e carregada. - comportamento indefinido se isto não ocorrer.
+	 * 2. para utilizar esta classe de sessão:
+	 * 2.1: banco de dados postgres
+	 * 2.2: no banco de dados deve-se ter:
+	 * >> tabela chamada head: com colunas(tipo_da_coluna(nome)): varchar(id) e timestamp(date) 
+	 * >> tabela chamada body: com colunas(tipo_da_coluna(nome)): varchar(head_id); varchar(name), varchar(value)
+	 * a coluna body.head_id é uma foreign key para a coluna: head.id
+	 * 3. Para iniciar uma sessão sempre utilizar a função: create();
+	 * 4. Para carregar uma sessão utilizar a função: load() -> está função diz se existe
+	 * uma sessão ou não viva no banco de dados.
+	 * 5. Para utilizar os valores da sessão, basta utilizar o operador[]
+	 * 6. Para deletar a sessão, tanto no banco de dados como na memória, basta utilizar a função: del()
+	 */
+	class session_postgres_t
+	{
+	 public:
+     /**
+      * Esta estrutura serve para armazenar a os valores da variável de sessão.
+      * Uma vez que a variável é inserida no banco, ela nunca é deletada, somente quando
+      * a sessão (linhas) no banco de dados é excluída ela é deletada.
+      * @arg val: guarda o valor da variável da sessão
+      * @arg val_db: guarda o valor original que está no banco de dados.
+      * isto é útil para verificar se realmente é necessário rodar em save() o comando update do sql
+      * caso não seja necessário, nada é feito, ou seja, a variável de sessão foi apenas para leitura, não houve
+      * alteração do valor que consta no banco de dados.
+      * @arg insert: seta se a função save() irá para executar um update or um insert para o valor de val.
+      */
+	 struct val_t {
+	  	std::string val = ""; // valor que será salvo no banco - o usuário atualiza e recebe este valor
+	  	std::string val_db = ""; // valor original que existe no banco de dados; caso não exista é vazio
+	  	bool insert = true; // se a operação feita pela função save() deve ser insert or update
+	 };
+	 
+	 private:
+	 	std::string connection_arg;
+		int max_time_session; // time of session in minutes
+		std::unordered_map<std::string, val_t> var;
+		std::string sid = ""; // session id
+		
+		// variáveis para verificar o tamanho dos campos na sessão estão conforme os limites com o banco de dados da sessão
+		size_t max_size_session_key;
+		size_t max_size_session_val;
+		size_t max_size_session_id;
+		
+	 public:
+	 	/**
+	 	 * @arg connection_arg = string necessária para abrir uma conexão com o banco
+	 	 * de dados que contém as tabelas da sessão.
+	 	 * @arg max_time_session = tempo máximo que a sessão fica viva em minutos.
+	 	 * @obs as variáveis abaixo servem para evitar erro na gravação com o banco de dados, ou seja, guardam os 
+	 	 * valores máximos que os respectivos campos do banco de dados podem ter
+	 	 * @arg max_size_session_key = tamanho máximo da string que a chave da sessão pode ter
+	 	 * @arg max_size_max_size_session_val = tamanho máximo que a string que representa o valor da variável de sessão pode ter
+	 	 * @arg max_size_session_id = tamanho máximo da string que representa o 'sid' pode ter
+	 	 */
+	 	void config(const std::string& connection_arg, const size_t max_time_session,
+	 		const size_t max_size_session_key = 4096, const size_t max_size_session_val = 4194304,
+	 		const size_t max_size_session_id = 2048);
+	 	
+	 	/**
+	 	 * Cria uma sessão no banco de dados.
+	 	 * @return Cria um novo número sid, e retorna o valor dele para ser enviado ao usuário.
+	 	 */
+	 	std::string create();
+	 	
+	 	/**
+	 	 * Carrega uma sessão que já existe no banco de dados.
+	 	 * Para ser válida a sessão deve existir e
+	 	 * a diferença de tempo entre a última chamada da função save() 
+	 	 * e o tempo atual deve ser menor ou igual que max_time_session
+	 	 * Guarda o valor passado na variável sid: this->sid = sid;
+	 	 * @return  true se a sessão existe e é válida.
+	 	 * 			fasle otherwise.
+	 	 */
+	 	bool load(const std::string& sid);
+	 	
+	 	/**
+	 	 * Salva os valores da sessão no banco de dados da sessão.
+	 	 * Atualiza o tempo de vida da sessão no banco de dados.
+	 	 * Utiliza o this->sid.
+	 	 * Deve ser sempre a última coisa a ser chamada de qualquer operação relacionado a sessão.
+	 	 */
+	 	void save();
+	 	
+	 	/**
+	 	 * Deleta a sessão do usuário.
+	 	 * Deleta tanto o map da sessão.
+	 	 * Deleta as linhas (que correspondem ao this->sid) da sessão no banco de dados da sessão.
+	 	 * Utiliza o this->sid.
+	 	 * Ao final o this->sid = "";
+	 	 */
+	 	void del();
+	 	
+	 	/**
+	 	 * Utiliza o this->sid.
+	 	 * Recupera o valor da sessão por meio de sua chave.
+	 	 * Caso a chave não exista no map, esta função realiza o seguinte procedimento:
+	 	 * 1. busca no banco de dados da sessão se a chave existe no BD.
+	 	 * 	caso exista, insere a chave com o valor no map e retorna o valor para o usuário.
+	 	 *  	marca que tal valor deve ser para atualizar, no sql executado em save()
+	 	 *  case não exista, ele cria apenas no map a tupla (key, value) com o valor vazio e retorna
+	 	 * 		para o usuário uma string vazia
+	 	 */
+    	std::string& operator[](const std::string& key);
+    	//const std::string& operator[](const std::string& key) const;
+	 	
+	 	////////////////////////////////////////////////////////////////////////////////
+		// public functions - for range interators - for work with for range loop
+		////////////////////////////////////////////////////////////////////////////////
+		/**
+		 * This code is for use:
+		 * obj B
+		 * for(auto const& it : B)
+		 * where it is the one element of std::unordered_map<std::string, field> _field
+		 * for(auto const& it : B) = for(auto const& it : B._field)
+		 */
+		 inline std::unordered_map<std::string, val_t>::iterator begin(){
+        	return var.begin();
+		 }
+	     inline std::unordered_map<std::string, val_t>::iterator end(){
+    	    return var.end();
+    	 }
+    	 inline std::unordered_map<std::string, val_t>::const_iterator begin() const {
+    	    return var.begin();
+    	 }
+    	 inline std::unordered_map<std::string, val_t>::const_iterator end() const {
+    	    return var.end();
+    	 }
+    	 /**
+    	  * Essas duas funções abaixo são importantes, para o interador, entretando
+    	  * eu já tenho feito elas acima, pois adicionei checks para elas.
+    	  * deixei elas pois são do código original que eu copei na internet
+    	  * e caso queira reusar o original tenho elas
+    	  *
+    	 inline const int& operator[](const std::string& key) const {
+    	    return _field.at(key);
+    	 }
+    	 
+    	 inline int& operator[](const std::string& key) {
+    	    return _field[key];
+    	 }*/
+	 private:
+	 	bool run_sql_select(const std::string& key);
+	 	std::string create_sid();
+	};
+	
+	extern session_postgres_t session; // variable init in file session/postgres/session.cpp
+	
+	////////////////////////////////////////////////////////////////////////////////
+	// Decode & Encode // perecent/umap/percentx.cpp
+	////////////////////////////////////////////////////////////////////////////////
+	/**
+	 */
+	std::unordered_map<std::string, std::string> fill_map(const std::string& str, const char lim);
+	/**
+	 */
+	std::string decode(const std::string& str, int& i, const char end);
+	std::string encode(const std::string& str);
+	
+	////////////////////////////////////////////////////////////////////////////////
+	// Cookie
+	////////////////////////////////////////////////////////////////////////////////
+	class cookie_simple_t
+	{
+	 private:
+		std::unordered_map<std::string, std::string> cookie;
+		
+	 public:
+	 	/**
+	 	 * @arg max_size: número máximo de bytes que poderá ter a variável HTTP_COOKIE do CGI.
+	 	 * maior que o valor aqui referido, é lançado uma exceção.
+	 	 * se o valor for -1, é ignorado a checagem de tamanho.
+	 	 */
+	 	void init(const int max_size = -1);
+	 	
+	 	/**
+	 	 * Envia o cookie para o cliente.
+	 	 * @arg name: nome do cookie.
+	 	 * @arg value: value of cookie.
+	 	 * @arg args: arguments of cookie.
+	 	 */
+	 	void print(const std::string& name, const std::string& value,
+	 		const std::string& args = "Path=/; HttpOnly; Domain="+u::to_str(getenv("SERVER_NAME")));
+	 	
+	 	/**
+	 	 * Envia o cookie para o cliente.
+	 	 * sintax sugar:
+	 	 * send() = print(name, cookie[name], args)
+	 	 * @arg name: nome do cookie.
+	 	 * @arg args: arguments of cookie.
+	 	 */
+	 	inline void send(const std::string& name, 
+	 		const std::string& args = "Path=/; HttpOnly; Domain="+u::to_str(getenv("SERVER_NAME"))) {
+	 		print(name, cookie[name], args);
+	 	}
+	 	
+	 	/**
+	 	 * Envia o cookie, com o comando para deletar o cookie no cliente.
+	 	 * @arg name: name of cookie
+	 	 */
+		inline void del(const std::string& name) {
+			print(name, "", "Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; HttpOnly" //; Secure // no https
+				"; Domain="+u::to_str(getenv("SERVER_NAME")));
+		}
+	 	
+	 	/**
+	 	 * @return o valor do cookie cujo nome é a chave.
+	 	 * se o coookie não existe, ele é criado, contendo o valor vazio, e seu valor é retornado.
+	 	 */
+    	std::string& operator[](const std::string& key);
+    	//const std::string& operator[](const std::string& key) const;
+	 	
+	 	////////////////////////////////////////////////////////////////////////////////
+		// public functions - for range interators - for work with for range loop
+		////////////////////////////////////////////////////////////////////////////////
+		/**
+		 * This code is for use:
+		 * obj B
+		 * for(auto const& it : B)
+		 * where it is the one element of std::unordered_map<std::string, field> _field
+		 * for(auto const& it : B) = for(auto const& it : B._field)
+		 */
+		 inline std::unordered_map<std::string, std::string>::iterator begin(){
+        	return cookie.begin();
+		 }
+	     inline std::unordered_map<std::string, std::string>::iterator end(){
+    	    return cookie.end();
+    	 }
+    	 inline std::unordered_map<std::string, std::string>::const_iterator begin() const {
+    	    return cookie.begin();
+    	 }
+    	 inline std::unordered_map<std::string, std::string>::const_iterator end() const {
+    	    return cookie.end();
+    	 }
+    	 /**
+    	  * Essas duas funções abaixo são importantes, para o interador, entretando
+    	  * eu já tenho feito elas acima, pois adicionei checks para elas.
+    	  * deixei elas pois são do código original que eu copei na internet
+    	  * e caso queira reusar o original tenho elas
+    	  *
+    	 inline const int& operator[](const std::string& key) const {
+    	    return _field.at(key);
+    	 }
+    	 
+    	 inline int& operator[](const std::string& key) {
+    	    return _field[key];
+    	 }*/
+	};
+	
+	extern cookie_simple_t cookie; // variable init in file cookie/strUMap_simple/cookie.cpp
+	
+	////////////////////////////////////////////////////////////////////////////////
+	// in - input methods: get post or file_post
+	////////////////////////////////////////////////////////////////////////////////
+	class in_unify_t
+	{ private:
+		std::unordered_map<std::string, std::string> var;
+		
+	 public:
+	 	/**
+	 	 * Inicializa a variável var da classe.
+	 	 * Realiza o decode e preenche o map da classe - variável var.
+	 	 */
+	 	virtual void init(std::string& http_encode_input);
+	 
+	 	/**
+	 	 * necessary to multipart/form-data
+	 	 */
+	 	virtual inline std::string type(const std::string& key) { 
+	 		throw err("HTTP INPUT NOT POST multipart/form-data");
+	 	}
+	 	
+	 	
+	 	/**
+	 	 * @return o valor da entrada cujo nome é a chave.
+	 	 * se o valor não existe, throw exception
+	 	 */
+    	virtual std::string& operator[](const std::string& key);
+    	//const std::string& operator[](const std::string& key) const;
+	 	
+	 	////////////////////////////////////////////////////////////////////////////////
+		// public functions - for range interators - for work with for range loop
+		////////////////////////////////////////////////////////////////////////////////
+		/**
+		 * This code is for use:
+		 * obj B
+		 * for(auto const& it : B)
+		 * where it is the one element of std::unordered_map<std::string, field> _field
+		 * for(auto const& it : B) = for(auto const& it : B._field)
+		 */
+		 virtual inline std::unordered_map<std::string, std::string>::iterator begin(){
+        	return var.begin();
+		 }
+	     virtual inline std::unordered_map<std::string, std::string>::iterator end(){
+    	    return var.end();
+    	 }
+    	 virtual inline std::unordered_map<std::string, std::string>::const_iterator begin() const {
+    	    return var.begin();
+    	 }
+    	 virtual inline std::unordered_map<std::string, std::string>::const_iterator end() const {
+    	    return var.end();
+    	 }
+    	 /**
+    	  * Essas duas funções abaixo são importantes, para o interador, entretando
+    	  * eu já tenho feito elas acima, pois adicionei checks para elas.
+    	  * deixei elas pois são do código original que eu copei na internet
+    	  * e caso queira reusar o original tenho elas
+    	  *
+    	 inline const int& operator[](const std::string& key) const {
+    	    return _field.at(key);
+    	 }
+    	 
+    	 inline int& operator[](const std::string& key) {
+    	    return _field[key];
+    	 }*/
+	};
+	
+	/**
+	 * inicializa o input CGI de acordo com o método correto. - if get or post
+ 	 * @arg max_size: número máximo de bytes que poderá ter a variável CGI de entrada.
+ 	 * maior que o valor aqui referido, é lançado uma exceção.
+ 	 * se o valor for -1, é ignorado a checagem de tamanho.
+ 	 * se for getenv("REQUEST_METHOD") = GET then: max_size >= QUERY_STRING throw execption
+ 	 * se for getenv("REQUEST_METHOD") = POST then: max_size >= CONTENT_TYPE throw execption
+ 	 */
+	void in_init(const long max_size = -1); // in file in/unify_umap/in.cpp
+	
+	extern in_unify_t in; // variable init in file in/unify_umap/in.cpp
+} // end namespace w
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Implementation of templates and inline functions
+////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #endif // CWEBPP_H
 
 ////////////////////////////////////////////////////////////////////////////////

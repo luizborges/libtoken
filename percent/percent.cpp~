@@ -102,7 +102,7 @@ cweb::encode(const char* in,
 	
 	FILE *tmp = tmpfile();
 	if(tmp == NULL) {
-		MError("CWEB:: Open temporary file error.\nerro is %d\nstr erro is \"%s\"",
+		err("CWEB:: Open temporary file error.\nerro is %d\nstr erro is \"%s\"",
     		errno, strerror(errno));
 		return NULL;
 	}

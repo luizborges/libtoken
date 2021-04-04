@@ -30,14 +30,14 @@ class Post
  		size = 2048;
  		_stdin = new char[size];
 		if(_stdin == NULL) {
-			Error("CWEB::POST - Allocated Space for _stdin Post Buffer.\n Size is %d\n"
+			err("CWEB::POST - Allocated Space for _stdin Post Buffer.\n Size is %d\n"
 			"POST type is \"application/x-www-form-urlencoded\"\nerro is %d\n"
 			"str erro is \"%s\"", size, errno, strerror(errno));
 		}
 		
 		str = new char[size];
 		if(str == NULL) {
-			Error("CWEB::POST - Allocated Space for Post Undecoded Buffer.\n Size is %d\n"
+			err("CWEB::POST - Allocated Space for Post Undecoded Buffer.\n Size is %d\n"
 			"POST type is \"application/x-www-form-urlencoded\"\nerro is %d\n"
 			"str erro is \"%s\"", size, errno, strerror(errno));
 		}
@@ -50,17 +50,17 @@ class Post
 		///////////////////////////////////////////////////////////////////
 		char *strctlen = getenv("CONTENT_LENGTH");
 		if(strctlen == NULL) {
-			Error("CWEB::IN - NO CONTENT_LENGTH\ngetenv(\"CONTENT_LENGTH\") = NULL\n"
+			err("CWEB::IN - NO CONTENT_LENGTH\ngetenv(\"CONTENT_LENGTH\") = NULL\n"
 			"POST type is \"application/x-www-form-urlencoded\"");
 		}
 		long stdin_size = strtol(strctlen, NULL, 0);
 		if(stdin_size == 0L) {
-			Error("CWEB::IN - strtol()\nstrtol() = 0L\ngetenv(\"CONTENT_LENGTH\") = \"%s\"\n"
+			err("CWEB::IN - strtol()\nstrtol() = 0L\ngetenv(\"CONTENT_LENGTH\") = \"%s\"\n"
 			"POST type is \"application/x-www-form-urlencoded\"\nerro is %d\n"
 			"str erro is \"%s\"", strctlen, errno, strerror(errno));
 		}
 		if(stdin_size < 0L) {
-			Error("CWEB::IN - CONTENT_LENGTH is lesser than 1\n"
+			err("CWEB::IN - CONTENT_LENGTH is lesser than 1\n"
 			"getenv(\"CONTENT_LENGTH\") = \"%s\"\nCONTENT_LENGTH = %ld"
 			"POST type is \"application/x-www-form-urlencoded\"",
 			strctlen, stdin_size);
@@ -68,7 +68,7 @@ class Post
 		
 		if(stdin_size > max_size && max_size > 0)
 		{
-			Error("CWEB::IN - size of input data recieve by HTTP POST METHOD is bigger"
+			err("CWEB::IN - size of input data recieve by HTTP POST METHOD is bigger"
 			"bigger than max size allowed for this type of input.\n"
 			"getenv(\"CONTENT_LENGTH\") = \"%s\"\nCONTENT_LENGTH = %ld bytes\n"
 			"Maximum size for HTTP POST METHOD -\"application/x-www-form-urlencoded\" "
@@ -84,7 +84,7 @@ class Post
 		
 			_stdin = static_cast<char*>(malloc(size*sizeof(char)));
 			if(_stdin == NULL) {
-				Error("CWEB::IN - Allocated Space for STDIN POST - String Default.\n"
+				err("CWEB::IN - Allocated Space for STDIN POST - String Default.\n"
 				"getenv(\"CONTENT_LENGTH\") = \"%s\"\nTried to allocated %d bytes\n"
 				"POST type is \"application/x-www-form-urlencoded\"\nerro is %d\n"
 				"str erro is \"%s\"", strctlen, size*sizeof(char), errno, strerror(errno));
@@ -92,7 +92,7 @@ class Post
 			
 			str = static_cast<char*>(malloc(size*sizeof(char)));
 			if(str == NULL) {
-				Error("CWEB::IN - Allocated Space for POST - String Default.\n"
+				err("CWEB::IN - Allocated Space for POST - String Default.\n"
 				"getenv(\"CONTENT_LENGTH\") = \"%s\"\nTried to allocated %d bytes\n"
 				"POST type is \"application/x-www-form-urlencoded\"\nerro is %d\n"
 				"str erro is \"%s\"", strctlen, size*sizeof(char), errno, strerror(errno));
@@ -102,7 +102,7 @@ class Post
 		// insere o post dentro da string para realiar a leitura
 		size_t read = fread(_stdin, sizeof(char), stdin_size, stdin);
 		if(read != static_cast<size_t>(stdin_size)) {
-			Error("CWEB::IN - Reading post content and putting it into postStr.\n"
+			err("CWEB::IN - Reading post content and putting it into postStr.\n"
 			"Read in post content: %ld\nCONTENT_LENGTH string: \"%s\"\nCONTENT_LENGTH: %ld\n"
 			"POST type is \"application/x-www-form-urlencoded\"\nerro is %d\n"
 			"str erro is \"%s\"", read, strctlen, stdin_size, errno, strerror(errno));
@@ -122,8 +122,8 @@ class Post
 				return it->second;
 			}
 		}
-		//PRINT_WARNING_IF_NO_KEY_IN_MAP:
-		Warn("CWEB::IN - Fetch for a no key of HTTP REQUEST METHOD POST.\n"
+		//PRINT_errING_IF_NO_KEY_IN_MAP:
+		err("CWEB::IN - Fetch for a no key of HTTP REQUEST METHOD POST.\n"
 		"type of the post is \"%s\"\nfectch key = \"%s\"\nnumber of keys is %d\n"
 		"List of all keys in HTTP REQUEST METHOD POST that be parsed:",
 		type(), key, _map.size());
@@ -160,7 +160,7 @@ class Post
 		
 			char *keyDecode = &str[posInitNextStr];
 			if(cweb::decode(keyDecode, key, keyLen) != true) { // decode the key
-				Error("CWEB::IN - Decoding key in HTTP REQUEST METHOD POST.\n"
+				err("CWEB::IN - Decoding key in HTTP REQUEST METHOD POST.\n"
 				"key enconding: \"%s\"\nkey decode (wrong value): \"%s\"\nKey length: %d\n"
 				"POST type is \"application/x-www-form-urlencoded\"\n"
 				"HTTP post: \"%s\"\n", key, keyDecode, keyLen, _stdin);
@@ -179,7 +179,7 @@ class Post
 			char *contentDecode = &str[posInitNextStr];
 			// decode o conteúdo do par do post
 			if(cweb::decode(contentDecode, content, contentLen) != true) {
-				Error("CWEB::IN - Decoding content in HTTP REQUEST METHOD POST.\n"
+				err("CWEB::IN - Decoding content in HTTP REQUEST METHOD POST.\n"
 				"content enconding: \"%s\"\nkey decode (wrong value): \"%s\"\n"
 				"content length: %d\nPOST type is \"application/x-www-form-urlencoded\"\n"
 				"HTTP POST: \"%s\"\n", content, contentDecode, contentLen, _stdin);

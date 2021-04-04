@@ -42,13 +42,13 @@ struct Content // use this to keep the array/variale that will be write in sessi
 		init(name);
 		
 		if(data == NULL) {
-			Error("WEB::OUT - Data of output is NULL\nContent name is \"%s\"", name);
+			throw err("WEB::OUT - Data of output is NULL\nContent name is \"%s\"", name);
 		}
 		
 		int len = strlen(data);
 		this->data = new char[len +1];
 		if(this->data == NULL) {
-			Error("CWEB::OUT - In allocation memory for output value.\n"
+			throw err("CWEB::OUT - In allocation memory for output value.\n"
 			"Name of content is \"%s\"\ncontent size is %d bytes\nContent data is \"%s\"\n"
 			"erro is %d\nstr erro is \"%s\"", name, len, data, errno, strerror(errno));
 		}
@@ -118,7 +118,7 @@ struct Content // use this to keep the array/variale that will be write in sessi
 				endLine[0] = '\0'; // posiciona um novo fim na string para impressão do erro.
 			}
 		
-			Error("WEB::OUT - Tag <?cweb is incorrect.\n"
+			throw err("WEB::OUT - Tag <?cweb is incorrect.\n"
 			"Tag found (until the end of line): \"%s\"\n"
 			"Expected one of these sequences: \"<?cweb #in \"\" (with \' \') or"
 			" \"<?cweb\n#add \"\" (with \' \') \nfor more details see documentation.\n"
@@ -152,7 +152,7 @@ struct Content // use this to keep the array/variale that will be write in sessi
 			if(endLine != NULL) {
 				endLine[0] = '\0'; // posiciona um novo fim na string para impressão do erro.
 			}
-			Error("WEB::OUT - Tag <?cweb is incorrect.\n"
+			throw err("WEB::OUT - Tag <?cweb is incorrect.\n"
 			"NAME has always be terminated with character \'\"\'.\nNAME given is = \"%s\".\n"
 			"tag struct is \"<?cweb #in \"NAME\" ?>\" or \"<?cweb #add \"NAME\" ?>\".\n"
 			"for more details see documentation.\nClient Output Name: \"%s\"\n"
@@ -191,7 +191,7 @@ struct Content // use this to keep the array/variale that will be write in sessi
 				endLine[0] = '\0'; // posiciona um novo fim na string para impressão do erro.
 			}
 		
-			Error("WEB::OUT - Tag <?cweb is incorrect.\n"
+			throw err("WEB::OUT - Tag <?cweb is incorrect.\n"
 			"End of Tag found (until the end of line): \"%s\"\n"
 			"Expected one of these sequences: \" ?>\" (with \' \')\n"
 			"for more details see documentation.\nClient Output Name: \"%s\"\n"
@@ -208,7 +208,7 @@ struct Content // use this to keep the array/variale that will be write in sessi
 	
 	virtual char* get_new_name_tag_add()
 	{/*TRACE_FUNC*/
-		Error("WEB::OUT - This class cannot call this function.\nError in inheritance.\n"
+		throw err("WEB::OUT - This class cannot call this function.\nError in inheritance.\n"
 		"This function must only be called by class \"ContentFileName\"");
 		return NULL;
 	}
@@ -224,7 +224,7 @@ struct Content // use this to keep the array/variale that will be write in sessi
 		int len = strlen(name);
 		this->name = new char[len +1];
 		if(this->name == NULL) {
-			Error("CWEB::OUT - In allocation memory for output name.\n"
+			throw err("CWEB::OUT - In allocation memory for output name.\n"
 			"name size is %d bytes\nName is \"%s\"\nerro is %d\nstr erro is \"%s\"",
 			len, name, errno, strerror(errno));
 		}
@@ -235,15 +235,15 @@ struct Content // use this to keep the array/variale that will be write in sessi
 	{/*TRACE_FUNC*/
 		// check name 
 		if(name == NULL) {
-			Error("WEB::OUT - Name of output is NULL");
+			throw err("WEB::OUT - Name of output is NULL");
 		}
 		
 		if(strlen(name) < 1) {
-			Error("WEB::OUT - Name of output can not be a empty string");
+			throw err("WEB::OUT - Name of output can not be a empty string");
 		}
 		
 		if(Has_Only_Alpha_Num(name) == false) {
-			Error("WEB::SESSION - Not a valid output name.\n"
+			throw err("WEB::SESSION - Not a valid output name.\n"
 			"all character of name must be a letter (A to Z or a to z) or a digit (0 to 9) "
 			"or special character ('_' and '-').\nname: \"%s\"", name);
 		}
@@ -275,7 +275,7 @@ struct ContentFile: public Content
 		FILE *file) : Content(name)
 	{/*TRACE_FUNC*/
 		if(file == NULL) {
-			Error("WEB::OUT - File output is NULL\nContent name is \"%s\"", name);
+			throw err("WEB::OUT - File output is NULL\nContent name is \"%s\"", name);
 		}
 		
 		this->file = file;
@@ -302,16 +302,16 @@ struct ContentFileName: public Content
 		const char *fname) : Content(name)
 	{/*TRACE_FUNC*/
 		if(fname == NULL) {
-			Error("WEB::OUT - File name of output is NULL\nContent name is \"%s\"", name);
+			throw err("WEB::OUT - File name of output is NULL\nContent name is \"%s\"", name);
 		}
 		
 		int len = strlen(fname);
 		if(len < 1) {
-			Error("WEB::OUT - File name of output is a empty string");
+			throw err("WEB::OUT - File name of output is a empty string");
 		}
 		this->fname = new char[len +1];
 		if(this->fname == NULL) {
-			Error("CWEB::OUT - In allocation memory for output file name.\n"
+			throw err("CWEB::OUT - In allocation memory for output file name.\n"
 			"file name size is %d bytes\nfile name is \"%s\"\nName is \"%s\"\nerro is %d\n"
 			"str erro is \"%s\"", len, fname, name, errno, strerror(errno));
 		}
@@ -330,7 +330,7 @@ struct ContentFileName: public Content
 	
 		char *tagName = new char[strlen(prefix) + sizeof(int) +1];
 		if(tagName == NULL) {
-			Error("WEB::OUT - Allocating space for new name of tag add\n"
+			throw err("WEB::OUT - Allocating space for new name of tag add\n"
 			"Name of the file who tried to add is \"%s\"\nId of tag is %d\n"
 			"Tag is \"%s\"\nerro is %d\nstr erro is \"%s\"",
 			fname, num, tag, errno, strerror(errno));
@@ -387,7 +387,7 @@ class Out
  	{/*TRACE_FUNC*/
  		auto it = _map.find(cont.name);
 		if (it != _map.end()) {
-			Error("CWEB::OUT - There is already a content with the same name in output.\n"
+			throw err("CWEB::OUT - There is already a content with the same name in output.\n"
 			"Choose another name\nName is \"%s\"", cont.name);
 		}
 		
@@ -398,7 +398,6 @@ class Out
  	void print()
  	{/*TRACE_FUNC*/
  		running = this;
- 		
  		for(auto i : _queue) {
  			i->print();
  		}
@@ -429,7 +428,7 @@ class Out
  private:	
 	void log_print_no_key_map(const char *name)
 	{/*TRACE_FUNC*/
-		MError("CWEB::OUT - Fetch for a no name in output.\n"
+		err("CWEB::OUT - Fetch for a no name in output.\n"
 		"fectch name = \"%s\"\nnumber of keys is %d\n"
 		"List of all names in output that be parsed:", name, _map.size());
 		
@@ -438,7 +437,7 @@ class Out
    			fprintf(stderr, "[\"%s\"] = \"%s\"\n", elem.first, elem.second->type());
 		}
 		
-		abort();
+		throw err("");
 	}
 };
 
@@ -465,26 +464,26 @@ void call_child(const char *name)
 
 void
 cweb::out::str(
-	const char *name,
-	const char *data)
+	const string& name,
+	const string& data)
 {
-	return _out.set(*(new Content(name, data)));
+	return _out.set(*(new Content(name.c_str(), data.c_str())));
 }
 
 void
 cweb::out::file(
-	const char *name,
+	const string& name,
 	FILE *file)
 {
-	return _out.set(*(new ContentFile(name, file)));
+	return _out.set(*(new ContentFile(name.c_str(), file)));
 }
 
 void
 cweb::out::file(
-	const char *name,
-	const char *fname)
+	const string& name,
+	const string& fname)
 {
-	return _out.set(*(new ContentFileName(name, fname)));
+	return _out.set(*(new ContentFileName(name.c_str(), fname.c_str())));
 }
 
 void
@@ -500,7 +499,7 @@ cweb::out::clean()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Error Interface
+// err Interface
 ////////////////////////////////////////////////////////////////////////////////
 
 void

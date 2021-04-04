@@ -61,7 +61,7 @@ class Session
 	{ try {
 		FILE* fs = getFile();
 	   	if(fs == nullptr) {
-   			Warn("CWEB::SESSION - File Session is \"%s\"\nerro is %d\nstr erro is \"%s\"",
+   			err("CWEB::SESSION - File Session is \"%s\"\nerro is %d\nstr erro is \"%s\"",
 			fname, errno, strerror(errno));
 			return false;
    		}
@@ -135,7 +135,7 @@ class Session
 		}
 		
 	 	int size = strlen(dir) + strlen(_sid) + strlen(".session") +1;
-		/*Warn("++SIZE IS %d\ndir is \"%s\"\nstrlen(dir) = %d\nsid is \"%s\"\nstrlen(sid) is %d\nnsec is \"%s\"\nstrlen(nsec) = %d\nsid size is %d",
+		/*err("++SIZE IS %d\ndir is \"%s\"\nstrlen(dir) = %d\nsid is \"%s\"\nstrlen(sid) is %d\nnsec is \"%s\"\nstrlen(nsec) = %d\nsid size is %d",
 		size, dir, strlen(dir), sid, strlen(sid), nsec, strlen(nsec), sl);
 		*/
 	 _	fname = new char[size];
@@ -315,14 +315,14 @@ class Session
 		int size = strlen(dirFileSession);
 		dir = new char[size+1];
 		if(dir == nullptr) {
-			Error("CWEB::SESSION - In allocation memory for directory.\nSize is %ld\n"
+			err("CWEB::SESSION - In allocation memory for directory.\nSize is %ld\n"
 				"Directory is \"%s\"\nerro is %d\nstr erro is \"%s\"",
 				size+1, dirFileSession, errno, strerror(errno));
 		}
 		strcpy(dir, dirFileSession);
 					
 		#if defined(_WIN32) || defined(_WIN64)
-		Warn("CWEB::SESSION - Check the end of directory name is not implemented "
+		err("CWEB::SESSION - Check the end of directory name is not implemented "
 		"yet for Windows System.\n"
 		"The user must check himself to use cweb::session::config()");
 			
@@ -331,7 +331,7 @@ class Session
 		if(dir[size-1] != '/' && strlen(dir) > 1) {
 			dir = (char*)realloc(dir, (size+2)*sizeof(char));
 			if(dir == nullptr) {
-				Error("CWEB::SESSION - In reallocation memory for directory.\n"
+				err("CWEB::SESSION - In reallocation memory for directory.\n"
 				"Size is %ld\nDirectory is \"%s\"\nerro is %d\nstr erro is \"%s\"",
 				size+2, dirFileSession, errno, strerror(errno));
 			}
@@ -348,14 +348,14 @@ class Session
 			return;
 		}
 		if (del <= life) {
-			Warn("CWEB::SESSION - Time to delete old files session is lesser than "
+			err("CWEB::SESSION - Time to delete old files session is lesser than "
 			"life time to a session file.\nNothing will be done by this function.\n"
 			"NO file session delete by this funciton.");
 			return;
 		}
 	
 		#if defined(_WIN32) || defined(_WIN64)
-		Warn("CWEB::SESSION - Session Clean Old File Sessions is not implemented "
+		err("CWEB::SESSION - Session Clean Old File Sessions is not implemented "
 		"yet to Windows System.");
 	
 		#elif defined(unix) || defined(__unix) || defined(__unix__) || (defined (__APPLE__) && defined (__MACH__)) // Unix (Linux, *BSD, Mac OS X)
@@ -435,7 +435,7 @@ class Session
 	
 		time_t current = time(nullptr);
 		char strc[26];
-		strcpy(strc, ctime(&current)); // it is necessary, sometimes ctime gives errors.
+		strcpy(strc, ctime(&current)); // it is necessary, sometimes ctime gives errs.
 
 		time_t diff = current - ts;
 		//printf("current is %li\nts is %li\ndiff is %li\nDel is %li\n", current, ts, diff, del);
@@ -484,12 +484,12 @@ class Session
 	
 		time_t current = time(nullptr);
 		char strc[26];
-		strcpy(strc, ctime(&current)); // it is necessary, sometimes ctime gives errors.
+		strcpy(strc, ctime(&current)); // it is necessary, sometimes ctime gives errs.
 
 		time_t diff = current - ts;
 
 		if(diff > life) {
-			/*Warn("CWEB::SESSION - This section is expired.\nSession life is %li\n"
+			/*err("CWEB::SESSION - This section is expired.\nSession life is %li\n"
 			"Current is %li\nTime Session is %li\nTime difference is %li",
 			session->life, current, ts, diff);*/
 			return true;
@@ -572,7 +572,7 @@ class Session
 	 _	u::fwrite(&numKey, sizeof(int), 1, f);
 		
 		if(numKey < 1) {
-			Warn("CWEB::SESSION - Nothing to save in Session File.\nNumber of Keys is %d",
+			err("CWEB::SESSION - Nothing to save in Session File.\nNumber of Keys is %d",
 			 numKey);
 			return false;
 		}
@@ -605,7 +605,7 @@ class Session
 	
 	void log_print_no_key_map(const char *key)
 	{
-		Warn("CWEB::SESSION - Fetch for a no key of Session.\n"
+		err("CWEB::SESSION - Fetch for a no key of Session.\n"
 		"fectch key = \"%s\"\nnumber of keys is %d\n"
 		"List of all keys in Session that be parsed:", key, _map.size());
 		

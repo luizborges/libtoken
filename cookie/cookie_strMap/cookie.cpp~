@@ -32,7 +32,7 @@ class Cookie
  		size = 2048; // 2 kB is the default size of str to keep cookies
  		str = static_cast<char*>(malloc(2048*sizeof(char)));
  		if(str == NULL) {
-			Error("CWEB::COOKIE - Allocated Space for Cookie - String Default.\n"
+			throw err("CWEB::COOKIE - Allocated Space for Cookie - String Default.\n"
 			"Tried to allocated %d bytes\nerro is %d\nstr erro is \"%s\"",
 			size*sizeof(char), errno, strerror(errno));
 		}
@@ -46,7 +46,7 @@ class Cookie
 		_map.clear(); // limpa o map
 		http_cookie = getenv("HTTP_COOKIE");
 		if(http_cookie == NULL) {
-			Warn("CWEB::COOKIE - NO COOKIE.\ngetenv(\"HTTP_COOKIE\") = NULL");
+			warn("CWEB::COOKIE - NO COOKIE.\ngetenv(\"HTTP_COOKIE\") = NULL");
 			return false;
 		}
 		
@@ -58,7 +58,7 @@ class Cookie
 		
 			str = static_cast<char*>(malloc(size*sizeof(char)));
 			if(str == NULL) {
-				Error("CWEB::COOKIE - Allocated Space for Cookie - String Default.\n"
+				throw err("CWEB::COOKIE - Allocated Space for Cookie - String Default.\n"
 				"Tried to allocated %d bytes\nerro is %d\nstr erro is \"%s\"",
 				size*sizeof(char), errno, strerror(errno));
 			}
@@ -66,7 +66,7 @@ class Cookie
 		
 		fill_map();
 		/*
-		MError("print all elements of map\nmap size: %d", _map.size());
+		Merr("print all elements of map\nmap size: %d", _map.size());
 		for(auto elem : _map)
 		{
    			fprintf( stderr, "(func: \"%s\", %d)::[\"%s\"] = \"%s\" | "
@@ -89,7 +89,7 @@ class Cookie
 			}
 		}
 		//PRINT_WARNING_IF_NO_KEY_IN_MAP:
-		Warn("CWEB::COOKIE - Fetch for a no key of HTTP COOKIE.\nfectch key = \"%s\"\n"
+		warn("CWEB::COOKIE - Fetch for a no key of HTTP COOKIE.\nfectch key = \"%s\"\n"
 		"number of keys is %d\nList of all keys in HTTP COOKIE that be parsed.\n",
 		key, _map.size());
 		
@@ -111,18 +111,18 @@ class Cookie
 		// check the args
 		///////////////////////////////////////////////////////////////////
 		if(key == NULL) {
-			Error("CWEB::COOKIE - Cookie Set Key is NULL.");
+			throw err("CWEB::COOKIE - Cookie Set Key is NULL.");
 		}
 		if(strlen(key) < 1) {
-			Error("CWEB::COOKIE - Cookie Set Key is a empty string.");
+			throw err("CWEB::COOKIE - Cookie Set Key is a empty string.");
 		}
 	
 		if(value == NULL) {
-			Error("CWEB::COOKIE - Cookie Set Value is NULL.\nkey is \"%s\"", key);
+			throw err("CWEB::COOKIE - Cookie Set Value is NULL.\nkey is \"%s\"", key);
 		}
 		
 		if(expires_sec < -1) {
-			Error("CWEB::COOKIE - Cookie Set Expires seconds cannot be less than -1.\n"
+			throw err("CWEB::COOKIE - Cookie Set Expires seconds cannot be less than -1.\n"
 				"Uses 0 to not set expires time to cookie.\n"
 				"Uses -1 to expire a cookie, setting the value = \n"
 				"\"; Expires=Thu, 01 Jan 1970 00:00:00 GMT\".\n"
@@ -143,13 +143,13 @@ class Cookie
 			time_t expires = time(NULL) + expires_sec;
 			struct tm *localTimeExp = localtime(&expires);
 			if(localTimeExp == NULL) {
-				Error("Local Time is NULL.\nreturned from localtime() C function.\n"
+				throw err("Local Time is NULL.\nreturned from localtime() C function.\n"
 				"erro is %d\nstr erro is \"%s\"", errno, strerror(errno));
 			}
 		
 			char *st = asctime(localTimeExp);
 			if(st == NULL) {
-				Error("CWEB::COOKIE - String of Local Time is NULL.\n"
+				throw err("CWEB::COOKIE - String of Local Time is NULL.\n"
 				"returned from asctime() C function.\nerro is %d\nstr erro is \"%s\"",
 				errno, strerror(errno));
 			}
@@ -180,7 +180,7 @@ class Cookie
 		if(domain != NULL)
 		{
 			if(strlen(domain) < 1) {
-				Error("CWEB::COOKIE - Cookie Set Domain cannot be a empty string.");
+				throw err("CWEB::COOKIE - Cookie Set Domain cannot be a empty string.");
 			}
 		
 			fprintf(output, "; Domain=%s", domain);
@@ -189,7 +189,7 @@ class Cookie
 		if(path != NULL)
 		{
 			if(strlen(path) < 1) {
-				Error("CWEB::COOKIE - Cookie Set Path cannot be a empty string.");
+				throw err("CWEB::COOKIE - Cookie Set Path cannot be a empty string.");
 			}
 		
 			fprintf(output, "; Path=%s", path);
@@ -230,7 +230,7 @@ class Cookie
 		
 			char *keyDecode = &str[posInitNextStr];
 			if(cweb::decode(keyDecode, key, keyLen) == false) { // decode the key
-				Error("CWEB::COOKIE - decoding key in HTTP COOKIE.\nkey enconding: \"%s\"\n"
+				throw err("CWEB::COOKIE - decoding key in HTTP COOKIE.\nkey enconding: \"%s\"\n"
 					"key decode (wrong value): \"%s\"\nKey length: %d\n"
 					"HTTP COOKIE: \"%s\"\n", key, keyDecode, keyLen, str);
 			}
@@ -248,7 +248,7 @@ class Cookie
 			char *contentDecode = &str[posInitNextStr];
 			// decode o conteúdo do par do get
 			if(cweb::decode(contentDecode, content, contentLen) == false) { 
-				Error("CWEB::COOKIE - decoding content in HTTP COOKIE.\n"
+				throw err("CWEB::COOKIE - decoding content in HTTP COOKIE.\n"
 				"content enconding: \"%s\"\nkey decode (wrong value): \"%s\"\n"
 				"content length: %d\nHTTP COOKIE: \"%s\"",
 				content, contentDecode, contentLen, str);
@@ -324,7 +324,7 @@ cweb::cookie::set(const char *key, const char *value,
 	///////////////////////////////////////////////////////////////////
 	FILE *tmp = tmpfile();
 	if(tmp == NULL) {
-		Error("CWEB::COOKIE - Cookie Set Cannot Create a temporary file.\n"
+		throw err("CWEB::COOKIE - Cookie Set Cannot Create a temporary file.\n"
 		"erro is %d\nstr erro is \"%s\"",errno, strerror(errno));
 	}
 	
