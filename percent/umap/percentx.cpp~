@@ -140,6 +140,3 @@ w::encode(const std::string& str)
  } catch(std::exception const& e) { throw err(e.what()); }
 }
 
-
-
-

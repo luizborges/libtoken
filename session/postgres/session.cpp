@@ -7,8 +7,17 @@
 #include "../../cweb.hpp"
 
 ////////////////////////////////////////////////////////////////////////////////
-// Private Function
+// Useful SQL
 ////////////////////////////////////////////////////////////////////////////////
+/**
+// seleciona todos as linhas da tabela head em que o tempo delas (date) é maior que 5 minutos
+SELECT * from head where (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - date)/60))::NUMERIC > 5.0;
+
+// deleta todas as linhas da tabela head e body em que o tempo da sessão (head.date) é maior que 5 minutos
+delete from head where (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - date)/60))::NUMERIC > 5.0;
+ */
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Public Function

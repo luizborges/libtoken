@@ -37,6 +37,7 @@
 #include <fstream>
 #include <streambuf>
 #include <exception>
+#include <list>
 
 #include <pqxx/pqxx> // postgres
 
@@ -674,13 +675,55 @@ namespace w
 	// Decode & Encode // perecent/umap/percentx.cpp
 	////////////////////////////////////////////////////////////////////////////////
 	/**
+	 * Estas funções são baseadas na codificação do POST e GET do HTTP
 	 */
-	std::unordered_map<std::string, std::string> fill_map(const std::string& str, const char lim);
 	/**
+	 * Decodifica uma string
+	 * @arg str: string que será decodificada.
+	 * @arg i: posição inicial na string. - está posição será alterada. A posição final
+	 * é a posição do primeiro character end que ela encontrar, a partir do valor inicial
+	 * passado na variável i.
+	 * @arg end: charachter que marca o fim da codificação.
 	 */
 	std::string decode(const std::string& str, int& i, const char end);
+	/**
+	 * codifica uma string.
+	 */
 	std::string encode(const std::string& str);
 	
+	/**
+	 * Codifica os valores de um objeto (std::vector, std::list, etc) em uma string
+	 * já codificada.
+	 * Os valores do objeto NÃO podem estar codificados.
+	 * O character separador, limite, entre os elementos na string é o character '&'
+	 * @arg obj: objeto que terá seus valores codificados.
+	 * @arg num_elem_encode: número máximo de elementos a serem codificados.
+	 * se o valor for -1, todos os elementos do objeto serão codificados.
+	 * se o valor for maior que obj.size(), todos os elementos também serão codificados.
+	 * @return uma string que contém todos os valores do obj codificados, separados pelo character '&'
+	 */
+	template<typename T>
+	std::string encode(const T& obj, const int num_elem_encode = -1);
+	
+	/**
+	 * Decodifica uma string e passa seus valores para um objeto (estrutura unidimensional ordenada)
+	 * A estrutura tem que ter a função push_back para funcionar.
+	 * Exemplos de estruturas que funcionam com esta função assim: std::vector, std::list, etc.
+	 * @arg str: string que será decodificada e seus valores colocado no objeto a ser criado.
+	 * @arg lim: character que é o limite entre os valores da codificados da string.
+	 * @return: uma estrutura (v.g.: std::vector, std::list) que contém os valores da string
+	 * como seus elementos.
+	 */
+	template<typename T>
+	T fill_obj(const std::string& str, const char lim = '&');
+	
+	/**
+	 * Decodifica uma string e passa seus valores para um map.
+	 * @arg: str: string que será decoficiada.
+	 * @arg: lim: charachter que marca o limite entre as chaves e os valores.
+	 * Exemplo: nas funções do HTTP:: GET: '&' - POST: '&'
+	 */
+	std::unordered_map<std::string, std::string> fill_map(const std::string& str, const char lim);
 	////////////////////////////////////////////////////////////////////////////////
 	// Cookie
 	////////////////////////////////////////////////////////////////////////////////
@@ -723,8 +766,8 @@ namespace w
 	 	 * @arg name: name of cookie
 	 	 */
 		inline void del(const std::string& name) {
-			print(name, "", "Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; HttpOnly" //; Secure // no https
-				"; Domain="+u::to_str(getenv("SERVER_NAME")));
+			print(name, "", "Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; HttpOnly; " //; Secure // no https
+				"Domain="+u::to_str(getenv("SERVER_NAME")));
 		}
 	 	
 	 	/**
@@ -794,6 +837,13 @@ namespace w
 	 		throw err("HTTP INPUT NOT POST multipart/form-data");
 	 	}
 	 	
+	 	virtual inline size_t size() const {
+	 		return var.size();
+	 	}
+	 	
+	 	virtual inline bool empty() const {
+	 		return var.empty();
+	 	}
 	 	
 	 	/**
 	 	 * @return o valor da entrada cujo nome é a chave.
@@ -856,9 +906,38 @@ namespace w
 ////////////////////////////////////////////////////////////////////////////////
 // Implementation of templates and inline functions
 ////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+std::string w::encode(const T& obj, const int num_elem_encode)
+{ try {
+	// verifica o número de elementos da lista que será decodificado
+	if(num_elem_encode < -1) { throw err("number of elements of object to encode: %d\n", num_elem_encode); }
+	int max = num_elem_encode == -1 ? obj.size() : num_elem_encode;
+	
+	std::string str = "";
+	
+	typename T::const_iterator it = obj.begin();
+	for(int i = 0; i < max && it != obj.end(); ++i , ++it)
+	{
+		str += encode(*it) + "&";
+	}
+	
+	return str;
+ } catch(std::exception const& e) { throw err(e.what()); }
+}
 
-
-
+template<typename T>
+T w::fill_obj(const std::string& str, const char lim)
+{ try {
+	T obj;
+	for(int i=0; static_cast<size_t>(i) < str.size(); ++i)
+	{
+		std::string val = decode(str, i, lim);
+		obj.push_back(val);
+ 	}
+ 	
+	return obj;
+ } catch(std::exception const& e) { throw err(e.what()); }
+}
 
 
 
