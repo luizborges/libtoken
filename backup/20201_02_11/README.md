@@ -1,2 +1,0 @@
-# libcwebpp
-CWeb++ library

@@ -8,7 +8,7 @@ DLIB_NAME       = -lutilpp # insert here all dynamics libraries in DLIB_DIR_H yo
 # old -lerror -lstackTracer -lutilpp
 # old -lclientOutput_strMap -lroute_easy -lclientInput_manager -lcookie_manager
 # OLD -LIBCOMMON = -lerror -lmemoryManager -lstackTracer -lfileUtil -larrayList_noSync -lmap_ArrayList_noSync -labstractFactoryCommon
-CFLAGS          = -Wall -g -Ofast -DNDEBUG -Wno-variadic-macros -fPIC -Wl,--export-dynamic # Werror transforms warning in error
+CFLAGS          = -Wall -Wextra -g -Ofast -DNDEBUG -Wno-variadic-macros -fPIC -Wl,--export-dynamic -std=c++2a# Werror transforms warning in error
 DLIB_STD        = -lm -lpthread -lfcgi -lpqxx -lpq #-lgc
 DLIB            = $(DLIB_STD) $(DLIB_NAME)
 COMPILER_FLAGS  = $(CFLAGS) $(DLIB_DIR_LPATH) $(DLIB_DIR_H_IPATH)
@@ -20,30 +20,25 @@ LINK_DLIB       = $(LINK_FLAGS) -shared -Wl,-soname,$(LIB)
 DLIB_DIR_H_GLOBAL = /usr/local/include
 DLIB_DIR_GLOBAL   = /usr/local/lib
 ################################################
-# INCLUDE LIBRARIES OF THE LIBRARY
+# INCLUDE LIBRARIES OF THE LIBRARY - CPP FILES
 ################################################
-PERCENT = percent/c_style/percent.cpp percent/umap/percentx.cpp
-#ROUTE           = route/route_easy/route_easy.c
-IN      = in/manager/manager.cpp in/get/get_strMap/get.cpp in/post/post_strMap/post.cpp in/unify_umap/in.cpp
-OUT     = out/out_strMap/out.cpp
-COOKIE  = cookie/strUMap_simple/cookie.cpp
-#SESSION = session/session_fileMap/session.cpp
-SESSION = session/postgres/session.cpp
+TOKEN = token.cpp
+
 ################################################
 # END
 ################################################
 
 C_SRC_LIB       = 
 C_SRC_MAIN      = 
-C_SRC           = $(PERCENT) $(COOKIE) $(IN) $(SESSION) $(OUT)  
+C_SRC           = $(TOKEN)
 C_OBJ_ORI       = $(C_SRC:.cpp=.o)
 C_SRC_NAME_ONLY = $(notdir $(C_SRC))
 C_OBJ_NAME_ONLY = $(C_SRC_NAME_ONLY:.cpp=.o)
 C_OBJ_DIR       = objs/
 C_OBJ           = $(addprefix $(C_OBJ_DIR), $(C_OBJ_NAME_ONLY))
-C_LIB_H         = cweb.hpp # $(C_SRC_LIB:.cpp=.h)
+C_LIB_H         = token.hpp # $(C_SRC_LIB:.cpp=.h)
 LIB             = $(LIB_NAME_ONLY).1.0.0   # lib$(C_SRC_LIB:.cpp=.so)
-LIB_NAME_ONLY   = libcwebpp.so
+LIB_NAME_ONLY   = libtoken.so
 EXE             = exe
 
 ARG1       = #-q input.dat
