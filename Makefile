@@ -9,7 +9,7 @@ DLIB_NAME       = -lutilpp # insert here all dynamics libraries in DLIB_DIR_H yo
 # old -lclientOutput_strMap -lroute_easy -lclientInput_manager -lcookie_manager
 # OLD -LIBCOMMON = -lerror -lmemoryManager -lstackTracer -lfileUtil -larrayList_noSync -lmap_ArrayList_noSync -labstractFactoryCommon
 CFLAGS          = -Wall -Wextra -g -Ofast -DNDEBUG -Wno-variadic-macros -fPIC -Wl,--export-dynamic -std=c++2a# Werror transforms warning in error
-DLIB_STD        = -lm -lpthread -lfcgi -lpqxx -lpq #-lgc
+DLIB_STD        = -lm -lpthread #-lpqxx -lpq #-lgc -lfcgi
 DLIB            = $(DLIB_STD) $(DLIB_NAME)
 COMPILER_FLAGS  = $(CFLAGS) $(DLIB_DIR_LPATH) $(DLIB_DIR_H_IPATH)
 LINK_FLAGS      = $(COMPILER_FLAGS) $(DLIB_DIR_RPATH) # use -Wl,-rpath= when the library is not in global environment

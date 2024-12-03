@@ -1,0 +1,8 @@
+Fazer duas funções chamadas get_matrix_escstr(). -> uma recebe uma string e outra uma string_view como parâmetros do texto que será tratado.
+Essa função deve funcionar igual a função get_matrix(), exceto pelo fato de que ela escape the string inside the string that its receive as parameter.
+
+Exemplo: suponha que um dos parâmetros preveja que o character '\n' deve quebrar um linha, porém se este caractere estiver dentro de uma string, dentro da string, ele deve ser ignorado: str = "asdf asdf as df \"sdfa\nasdf\" asdf asdf " esta string não deve ter sua linha quebrada, pois o charactere '\n' está dentro de uma string, e a string deve ser preservada, ou seja, "pulada" para que as buscas pelos characteres nos parâmetros continuem.
+
+Isto é muito importante, por exemplo, no tratamento dos excels 'history', e em arquivos do tipo CVS e excels (e google spreadsheet), já que pode haver quebra de linha dentro de uma célula, porém o excel (e google spreadsheet) exporta a célula dentro de uma string.
+
+O nome escstr ao final da função significa "escape string".
