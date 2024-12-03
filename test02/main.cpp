@@ -113,12 +113,12 @@ void test008();
 int main()
 {
     //show(test1());
-    // test002();
-    // test003();
-    // test004();
-	// test005();
-	// test006();
-	// test007();
+    test002();
+    test003();
+    test004();
+	test005();
+	test006();
+	test007();
 	test008();
 
     return 0;
@@ -293,6 +293,24 @@ void test008() {
 	check(exists == true);
 	check(begin == 3);
 	check(size == 5);
+
+	text = "\"12345678\"";
+	std::tie(exists, begin, size) = token::find_str(text);
+	check(exists == true);
+	check(begin == 0);
+	check(size == 10);
+
+	text = "\"\"2345678\"";
+	std::tie(exists, begin, size) = token::find_str(text);
+	check(exists == true);
+	check(begin == 0);
+	check(size == 2);
+
+	text = "\"\\\"\"345678\"";
+	std::tie(exists, begin, size) = token::find_str(text);
+	check(exists == true);
+	check(begin == 0);
+	check(size == 4);
 
 	show(to_str(exists)," | begin: ",begin," | size: ",size,"\n");
 
