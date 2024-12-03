@@ -432,28 +432,23 @@ namespace token
 			   const size_t count = std::string::npos);
 	
 	/**
-	 * ADAPTAR O TEXTO PARA A NOVA FUNÇÃO!
 	 * Função realmente que deve ser chamada pelo usuário.
 	 * Exemplo de como usar essa função:
-	 * auto excel = token::get_matrix<std::deque, std::vector>(excel_untreated, {"\t"}, {}, {"\n", "\r"});
-	 * excel será do tipo std::deque<std::vector<std::string>>
+	 * auto excel = token::get_matrix_escstr<std::vector<std::vector<std::string>>(excel_untreated, {"\t"}, {}, {"\n", "\r"});
 	 * @param STR: pode ser do tipo std::string ou std::string_view ou tipo equivalente.
 	 * @param str: string em que será realizado a busca pelo token.
 	 * @param column_split: vector que contém os tokens que "quebram", "partem", a string em diversas colunas
 	 * os tokens deste vetor não entram no resultado final da string.
 	 * @param column_token: vector que contém os tokens que "quebram", "partem", a string em diversas colunas
-	 * os tokens deste vector entram no resultado final da string, cada token deste se torna uma posição
-	 * do vetor. A quantidade deste token no vector final será o número de vezes que ele aparecerá na string @str
-	 * @param line_split: funciona identico ao @column_split, com a diferença que os próximos resultados
-	 * serão colocados na linha subsequente da matrix, ou seja, se os resultados eram colocados na linha i
-	 * os próximos serão colocados na linha i+1
+	 * os tokens deste vector entram no resultado final da string, cada token deste se torna uma posição do vetor. 
+	 * A quantidade deste token no vector final será o número de vezes que ele aparecerá na string @str
+	 * @param line_split: funciona identico ao @column_split, com a diferença que os próximos resultados serão colocados na linha subsequente da matrix, ou seja, se os resultados eram colocados na linha i, os próximos serão colocados na linha i+1
 	 * Este token não integra o resultado.
-	 * @param line_token: funciona identico ao @column_token, com a diferença que os próximos resultados
-	 * serão colocados na linha subsequente da matrix, ou seja, se os resultados eram colocados na linha i
-	 * os próximos serão colocados na linha i+1
-	 * Este token integra o resultado, e é sempre o último token da linha, ou seja, da linha i -> linha nova i+1
-	 * que este token produz ao final.
-	 * @param escstr_type: define como será tratado as strings do tipo C/C++ encontradas. As strings C/C++ podem ser tratadas como um dos tipos token::type_t. Elas na função serão tratadas como um tipo especial de token, tanto para busca como no modo de compor o resultado final da função.
+	 * @param line_token: funciona identico ao @column_token, com a diferença que os próximos resultados serão colocados na linha subsequente da matrix, ou seja, se os resultados eram colocados na linha i os próximos serão colocados na linha i+1
+	 * Este token integra o resultado, e é sempre o último token da linha, ou seja, da linha i -> linha nova i+1 que este token produz ao final.
+	 * @param escstr_type: define como será tratado as strings do tipo C/C++ encontradas. 
+	 * As strings C/C++ podem ser tratadas como um dos tipos token::type_t. Elas na função serão tratadas como um tipo especial de token, tanto para busca como no modo de compor o resultado final da função.
+	 * Os outros tipos de tokens, definidos nos outros parâmetros que estiverem dentro da string C/C++ serão ignorados pelo programa, ou seja, a string C/C++ é tratada como um todo, e os tokens definidos nos outros parâmteros não são buscados dentro da string C/C++.
 	 * @return matrix que contém a string dividida segundo os tokens passados na função. 
 	 * Cada token produz uma nova posição no matrix final:
 	 * (@line_split e @line_token) produzem uma nova linha na matrix e 
@@ -499,6 +494,12 @@ namespace token
 	 * return: tuple<true, 3, 4>
 	 * str: "01\"4\""" -> begin = 3 -> count = 8
 	 * return: tuple<true, 3, 5>
+	 * str: "01\"4""" -> begin = 3 -> count = 8
+	 * return: tuple<true, 3, 5>
+	 * str: ""12345678""; -> begin = 0 -> count = std::string::npos
+	 * return: tuple<true, 0, 10>
+	 * str: """2345678""; -> begin = 0 -> count = std::string::npos
+	 * return: tuple<true, 0, 2>
 	 * @obs: se str.empty() == true -> return tuple<false, std::string::npos, std::string::npos>
 	 * @throw u::error: se count = 0, nenhuma busca será feita.
 	 * @throw:u::error: se begin >= str.size().
